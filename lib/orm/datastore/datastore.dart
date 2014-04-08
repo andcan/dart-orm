@@ -18,11 +18,15 @@ part of orm;
 
 abstract class Transformer<I, O> {
   
-  const Transformer(this.inputType, this.outputType);
+  const Transformer(this.inputTypeName, this.outputTypeName);
   
-  final String inputType;
+  final String inputTypeName;
   
-  final String outputType;
+  final String outputTypeName;
+  
+  Type get inputType => I;
+  
+  Type get outputType => O;
   
   bool isValid (value);
   

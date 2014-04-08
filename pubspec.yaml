@@ -1,0 +1,7 @@
+name: orm
+dependencies:
+  analyzer: 0.13.4
+  serialization: 0.9.1
+  sqljocky: 0.10.0
+  utils:
+    git: git://github.com/k4rr1m/dart-utils

@@ -1,266 +1,451 @@
-/**
- * Copyright (C) 2014  Andrea Cantafio kk4r.1m@gmail.com
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 part of orm;
 
-abstract class Enhancer<I, O> {
-  O enhance (I input);
-}
-
 class EnhancerEntity {
-  ClassDeclaration cd;
+  final StringBuffer _buffer = new StringBuffer ();
+  final String entityMetaName;
+  final String entityName;
+  final String entityNamelc;
+  final ExtendsClause extendsClause;
+  final bool hasParent;
+  final bool isAbstract;
+  
+  final List<ImportDirective> imports = [];
   final List<Member> members = [];
   final List<MethodDeclaration> methods = <MethodDeclaration>[];
-  String ormpath;
   
-  EnhancerEntity (this.cd);
+  Member id;
+  EnhancerEntity superclass;
   
-  String toString () {
-    String name = cd.name.name;
-    StringBuffer arr = new StringBuffer ('['),
-        cs = new StringBuffer ('$name.empty ();\n  $name ({'), cs1 = new StringBuffer (), 
-        cs2 = new StringBuffer ('factory $name.fromMap (Map<String, dynamic> map) {\n    return new $name('),
-        eq = new StringBuffer (), fs = new StringBuffer (), gs = new StringBuffer (),
-        hc = new StringBuffer (), ps = new StringBuffer ('const Persistable '),
-        map = new StringBuffer ('{'), ms = new StringBuffer (),
-        sql = new StringBuffer ("const String _SQL = 'CREATE TABLE $name ("),
-        serialize = new StringBuffer (), setters = new StringBuffer (),
-        symbols = new StringBuffer ('const Symbol ');
-    Member id;
-    
-    members.forEach((member) {
-      String name = member.vdname, nameuc = '_${member.vdnameuc}';
-      if (member.a.name.toString() == 'Id') {
-        id = member;
-      }
-      arr.write('_$name, ');
-      cs.write('${member.asParameter()}, ');
-      cs1.write('_$name = $name, ');
-      cs2.write("$name: map['$name'], ");
-      eq.write('e.$name == _$name && ');
-      fs.write('\n  ${member.asPrivate()}');
-      gs.write('\n  ${member.asGetter()}');
-      hc.write('hash = p * hash + _$name.hashCode;\n    ');
-      map.write("'$name': _$name, ");
-      setters.write('\n  ${member.asSetter()}');
-      symbols.write("_SYMBOL$nameuc = const Symbol ('$name'), ");
+  EnhancerEntity(ClassDeclaration cd)
+      : entityMetaName = '${cd.name.name}Meta',
+      entityName = cd.name.name,
+      entityNamelc = cd.name.name.toLowerCase(),
+      extendsClause = cd.extendsClause,
+      hasParent = null != cd.extendsClause,
+      isAbstract = null != cd.abstractKeyword;
       
-      String ann;
-      Annotation annotation = member.a;
-      Map<String, String> args = new Map<String, String> ();
-      annotation.arguments.arguments.forEach((arg) {
-        var s = arg.toString().split(': ');
-        args[s[0]] = s[1];
-      });
+  Member get identifier => null == id ? 
+      (hasParent ? superclass.identifier : null) : id;
+  
+  List<Member> _allMembs;
+  
+  List<Member> _allMembers () {
+    if (null == _allMembs) {
+      _allMembs = <Member>[];
+      if (hasParent) {
+        _allMembs.addAll(superclass.members);
+      }
+      _allMembs.addAll(members);
+    }
+    return _allMembs;
+  }
+  
+  Map<String, String> _annotationArguments (Annotation a) {
+    Map<String, String> args = <String, String> {};
+    a.arguments.arguments.forEach((arg) {
+      String argument = arg.toString();
+      int pos = argument.indexOf(':');
+      args[argument.substring(0, pos - 1)] = argument.substring(pos + 2);
+    });
+    return args;
+  }
+      
+  String _asArray () {
+    _buffer
+        ..clear()
+        ..write('List asList ($entityName $entityNamelc) => [');
+    _allMembers().forEach((member) => _buffer.write('\n    $entityNamelc.${member.vdname},'));
+    return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
+  }
+  
+  String _asMap () {
+    _buffer
+        ..clear()
+        ..write('Map<String, dynamic> asMap ($entityName $entityNamelc) => <String, dynamic> {');
+    _allMembers().forEach((member) {
+      String vdname = member.vdname;
+      _buffer.write("\n    '${member.vdname}': $entityNamelc.${member.vdname},");
+    });
+    return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  };';
+  }
+  
+  String _asMapSym () {
+    _buffer
+        ..clear()
+        ..write('Map<Symbol, dynamic> asMapSym ($entityName $entityNamelc) => <Symbol, dynamic> {');
+    if (hasParent) {
+      superclass.members.forEach((member) => 
+          _buffer.write('\n    ${superclass.entityMetaName}.SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},'));
+    }
+    members.forEach((member) =>
+      _buffer.write("\n    SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},")
+    );
+    return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  };';
+  }
+  
+  String _delete () => 'String delete ($entityName $entityNamelc) => "DELETE FROM $entityName WHERE $entityName.\$idName = \'\${get($entityNamelc, idName)}\';";';
+  
+  String _fields () {
+    _buffer
+        ..clear()
+        ..write('static const String ');
+    members.forEach((member) =>
+        _buffer.write("FIELD_${member.vdnameuc} = '${member.vdname}',\n    "));
+    return '${_buffer.toString().substring(0, _buffer.length - 6)};';
+  }
+  
+  String _fieldsList () {
+    _buffer
+        ..clear()
+        ..write('static const List<String> FIELDS = const <String>[');
+    if (hasParent) {
+      superclass.members.forEach((member) =>
+          _buffer.write("\n    ${superclass.entityMetaName}.FIELD_${member.vdnameuc},"));
+    }
+    members.forEach((member) =>
+        _buffer.write("\n    FIELD_${member.vdnameuc},"));
+    return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
+  }
+  
+  String _get () {
+    _buffer
+        ..clear()
+        ..write('dynamic get ($entityName $entityNamelc, String field) {\n    switch (field) {\n');
+    List<Member> ms = <Member>[];
+    if (hasParent) {
+      ms.addAll(superclass.members);
+    }
+    ms.addAll(members);
+    ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        return $entityNamelc.${member.vdname};\n        break;\n"));
+    return '''$_buffer      default:
+        throw new ArgumentError('Invalid field \$field');
+        break;
+    }
+  }''';
+  }
+  
+  String _getters () {
+    _buffer.clear();
+    members.forEach((member) => _buffer.write('${member.asGetter()}\n  '));
+    return '${_buffer.toString().substring(0, _buffer.length - 3)}';
+  }
+  
+  String _imports () {
+    _buffer.clear();
+    imports.forEach((i) {
+      if (null != superclass) {
+        String imp = i.toString();
+        String target = '${superclass.entityNamelc}.dart';
+        _buffer.write('${imp.contains(target) 
+          ? imp.replaceFirst(target, '${superclass.entityNamelc}.e.dart') 
+              : imp}\n');
+      } else {
+        _buffer.write('$i\n');
+      }
+    });
+    return _buffer.toString();
+  }
+  
+  String _insert () {
+    _buffer
+        ..clear()
+        ..write('String insert ($entityName $entityNamelc, {bool ignore: false}) => "INSERT \${ignore ? \'ignore \' : \' \'}INTO $entityName (');
+    members.forEach((member) => _buffer.write('${member.vdname}, '));
+    String tmp = '${_buffer.toString().substring(0, _buffer.length - 2)}) VALUES (';
+    _buffer
+        ..clear()
+        ..write(tmp);
+    members.forEach((member) => _buffer.write("'\${$entityNamelc.${member.vdname}}', "));
+    return '${_buffer.toString().substring(0, _buffer.length - 2)});";';
+  }
+  
+  String _persistables () {
+    _buffer
+        ..clear()
+        ..write('static const Persistable ');
+    members.forEach((member) {
+      Annotation annotation = member.annotation;
+      String annPrefix;
+      switch (member.typeName) {
+        case 'bool':
+          annPrefix = 'Bool';
+          break;
+        case 'int':
+          annPrefix = 'Int';
+          break;
+        case 'num':
+          annPrefix = 'Num';
+          break;
+        case 'String':
+          annPrefix = 'String';
+          break;
+        default:
+          annPrefix = '';
+          break;
+      }
+      _buffer.write('PERSISTABLE_${member.vdnameuc} = const ${annPrefix}Persistable ${annotation.arguments.toString()},\n    ');
+    });
+    return '${_buffer.toString().substring(0, _buffer.length - 6)};';
+  }
+  
+  String _select () => '''String select ($entityName $entityNamelc, [List<String> fields]) {
+    if (null == fields) {
+      return 'SELECT * FROM $entityName WHERE $entityName.${identifier.vdname} = \${$entityNamelc.${identifier.vdname}} LIMIT 1';
+    } else if (fields.isEmpty) {
+      throw new ArgumentError('fields cannot be empty');
+    }
+    StringBuffer query = new StringBuffer('SELECT ');
+    fields.forEach((field) => query.write('\$field, '));
+    return '\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} = \${$entityNamelc.${identifier.vdname}} LIMIT 1;';
+  }''';
+  
+  String _selectAll() => '''String selectAll (List<$entityName> ${entityNamelc}s, [List<String> fields]) {
+    if (null == fields) {
+      StringBuffer query = new StringBuffer('SELECT * FROM $entityName WHERE $entityName.${identifier.vdname} IN (');
+      ${entityNamelc}s.forEach(($entityNamelc) => query.write("'\${$entityNamelc.${identifier.vdname}}', "));
+      return '\${query.toString().substring(0, query.length - 2)}) LIMIT \${${entityNamelc}s.length}';
+    } else if (fields.isEmpty) {
+      throw new ArgumentError('fields cannot be empty');
+    }
+    StringBuffer query = new StringBuffer('SELECT ');
+    fields.forEach((field) => query.write('\$field, '));
+    query = new StringBuffer('\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} IN (');
+    ${entityNamelc}s.forEach(($entityNamelc) => query.write("'\${$entityNamelc.${identifier.vdname}}', "));
+    return '\${query.toString().substring(0, query.length - 2)}) LIMIT \${${entityNamelc}s.length};';
+  }''';
+  
+  String _setters () {
+    _buffer.clear();
+    members.forEach((member) => _buffer.write('${member.asSetter()}\n  '));
+    return '${_buffer.toString().substring(0, _buffer.length - 3)}'.replaceAll('{{EntityMetaName}}', entityMetaName);
+  }
+  
+  String _symbols() {
+    _buffer
+        ..clear()
+        ..write('static const Symbol ');
+    members.forEach((member) => _buffer.write("SYMBOL_${member.vdnameuc} = const Symbol('${member.vdname}'),\n    "));
+    return '${_buffer.toString().substring(0, _buffer.length - 6)};';
+  }
+  
+  String _properties () {
+    _buffer.clear();
+    members.forEach((member) => _buffer.write('${member.asPrivate()}\n  '));
+    return '${_buffer.toString().substring(0, _buffer.length - 3)}';
+  }
+  
+  String _sql () {
+    _buffer
+        ..clear()
+        ..write("static const String SQL_CREATE = 'CREATE TABLE $entityName (");
+    _allMembers().forEach((member) {
+      Map<String, String> args = _annotationArguments(member.annotation);
       String sqlType;
       switch (member.typeName) {
         case 'int':
-          ann = 'Int';
           sqlType = 'INT';
           break;
         case 'num':
-          ann = 'Num';
           sqlType = 'DOUBLE';
           break;
         case 'String':
-          ann = 'String';
           if (args.containsKey('max')) {
             sqlType = 'VARCHAR(${args['max']})';
           } else {
             sqlType = 'VARCHAR(256)';
           }
           break;
-        default:
-          ann = '';
-          break;
       }
-      sql.write('$name $sqlType ${args.containsKey('nullable') && args['nullable'] ? ' ': 'NOT '}NULL, ');
-      ps.write('_PERSISTABLE$nameuc = const ${ann}Persistable ${annotation.arguments.toString()}, ');
+      _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
     });
-    
-    methods.forEach((method) {
-      ms.write('${method.toSource()}\n\t');
+    return "${_buffer.toString().substring(0, _buffer.length - 2)});';";
+  }
+  
+  String _update () => '''String update ($entityName $entityNamelc, List values, [List<String> fields]) {
+    if (null == fields) {
+      fields = ${entityName}Meta.FIELDS;
+    }
+    if (fields.isEmpty) {
+      throw new ArgumentError('fields cannot be empty');
+    }
+    StringBuffer query = new StringBuffer('UPDATE $entityName SET ');
+    fields.forEach((f) => query.write("\$f = '\${get($entityNamelc, f)}', "));
+    return "\${query.toString().substring(0, query.length - 2)} WHERE $entityName.\$idName = '\${get($entityNamelc, idName)}';";
+  }''';
+      
+  String toString () => '''${_imports()}
+${isAbstract ? 'abstract ' : ''}class $entityName extends ${hasParent ? extendsClause.superclass : 'Entity'} {
+  ${_properties()}
+  
+  ${_getters()}
+  $entityMetaName get entityMetadata => _meta;
+  
+  ${_setters()}
+  
+  static final $entityMetaName _meta = new $entityMetaName();
+}
+
+class $entityMetaName ${hasParent ? 'extends ${extendsClause.superclass}Meta implements' : 'extends'} EntityMeta<$entityName> {
+
+  ${hasParent ? '' : 'String get idName => \'${identifier.vdname}\';\n\n  Symbol get idNameSym => SYMBOL_${identifier.vdnameuc};\n'}
+  String get entityName => ENTITY_NAME;
+
+  Symbol get entityNameSym => ENTITY_NAME_SYM;
+
+  ${_asArray()}
+
+  ${_asMap()}
+  
+  ${_asMapSym()}
+  
+  ${_delete()}
+  
+  ${_get()}
+  
+  ${_insert()}
+  
+  ${_select()}
+  
+  ${_selectAll()}
+  
+  ${_update()}
+  
+  static const String ENTITY_NAME = '$entityName';
+  static const Symbol ENTITY_NAME_SYM = const Symbol ('$entityName');
+  ${_fields()}
+  ${_fieldsList()}
+  ${_sql()}
+  ${_persistables()}
+  ${_symbols()}
+}
+''';
+}
+
+class EntityEnhancer extends GeneralizingAstVisitor {
+  Annotation _annotation;
+  EnhancerEntity _current;
+  String _currentFileName;
+  Map<String, EnhancerEntity> _entities = <String, EnhancerEntity>{};
+  Map<String, List<EnhancerEntity>> _groups = <String, List<EnhancerEntity>>{};
+  List<ImportDirective> _imports = <ImportDirective>[];
+  TypeName _type;
+  int _typeCounter = 0;
+  
+  /**
+   * Exepects a [Map]<[String], [String]> keyed by file path of the source 
+   * to parse.
+   */
+  Map<String, List<String>> enhance (Map<String, String> contents, {bool suppressErrors: false}) {
+    contents.forEach((name, source) {
+      _currentFileName = name;
+      parseCompilationUnit(source, name: name, suppressErrors: suppressErrors)
+        .accept(this);
     });
-    
-    String _arr = '${arr.toString().substring(0, arr.length - 2)}]';
-    String _map = '${map.toString().substring(0, map.length - 2)}}';
-    String _eq = '${eq.toString().substring(0, eq.length - 4)}';
-    String _hc = '${hc.toString().substring(0, hc.length - 5)}';
-    String _cs = '''${cs.toString().substring(0, cs.length - 2)}}) :    
-    ${cs1.toString().substring(0, cs1.length - 2)};
-  ${cs2.toString().substring(0, cs2.length - 2)});
-  }''';
-    String _ms = '';
-    if (ms.isNotEmpty) {
-      _ms = '${ms.toString().substring(0, ms.length - 2)}';
-    }
-    String _sql = "${sql.toString().substring(0, sql.length - 2)}, PRIMARY KEY(${id.vdname}));';";
-    String _symbols = '${symbols.toString().substring(0, symbols.length - 2)};';
-    String _ps = '${ps.toString().substring(0, ps.length - 2)};';
-    
-    return '''import '$ormpath/orm.dart';
-
-$_sql
-$_symbols
-$_ps
-
-class ${cd.name}Meta extends EntityMeta {
-  Symbol get idFieldName => _SYMBOL_${id.vdnameuc};
-}
-
-class ${cd.abstractKeyword == null ? '' : '${cd.abstractKeyword} '}${cd.name} extends Entity${id.typeName == null ? '' : '<${id.typeName}>'} {
-  $_cs
-  $fs
-  static final EntityMeta _meta = new ${cd.name}Meta();
-  
-  List asList () => $_arr;
-  
-  Map<String, dynamic> asMap () => $_map;
-  
-  bool _validate (Persistable persistable, value) => persistable.validate(value);
-  $gs
-  int get hashCode {
-    final int p = 37;
-    int hash = 1;
-    $_hc
-    return hash;
-  }
-  EntityMeta get entityMetadata => _meta;
-
-  $_ms
-  $setters
-  bool operator == ($name e) => $_eq;
-}''';
-  }
-}
-
-class Member {
-  final Annotation a;
-  final String typeName;
-  final String vdname, vdnameuc;
-  
-  Member (Annotation this.a, TypeName tn, VariableDeclaration vd) 
-  : typeName = null == tn ? tn : tn.toString(),
-    vdname = vd.name.toString(),
-    vdnameuc = vd.name.toString().toUpperCase();
-  
-  String get _type => '${typeName == null ? ' ' : '$typeName '}';
-  
-  String asGetter () => 'get $vdname => _$vdname};';
-  
-  String asSetter () => '''set $vdname ($_type$vdname) {
-    if (_PERSISTABLE_$vdnameuc.validate($vdname)) {
-      _$vdname = $vdname;
-      _meta.propertyChanged(_SYMBOL_$vdnameuc);
-    } else {
-      throw new ArgumentError ('$vdname not valid');
-    }
-  }''';
-  
-  String asParameter () => '$_type$vdname';
-  
-  String asPrivate () => '${_type}_$vdname;';
-  
-  String toString () => '$a $_type$vdname;';
-}
-
-class EntityEnhancer extends GeneralizingAstVisitor implements Enhancer<String, String> {
-  
-  EnhancerEntity _e;
-  List<EnhancerEntity> _es = <EnhancerEntity>[];
-  
-  Annotation _a;
-  TypeName _t;
-  
-  final String ormpath;
-  
-  EntityEnhancer(this.ormpath);
-  
-  String enhance (String path) {
-    
-    parseDartFile(path).accept(this);
-    
-    var buffer = new StringBuffer ();
-    _es.forEach((e) => buffer.write('$e\n  '));
-    
-    return buffer.toString();
+    _entities.values.forEach((entity) {
+      if (entity.hasParent) {
+        ExtendsClause clause = entity.extendsClause;
+        String superclass = clause.superclass.name.name;
+        if (_entities.containsKey(superclass)) {
+          entity.superclass = _entities[superclass];
+          
+        }
+      }
+    });
+    Map<String, List<String>> es = <String, List<String>>{};
+    _groups.forEach((file, entities) {
+      List<String> enhanced = <String>[];
+      entities.forEach((entity) => enhanced.add(entity.toString()));
+      es[file] = enhanced;
+    });
+    return es;
   }
   
   visitAnnotation(Annotation node) {
-    _a = node;
+    _annotation = node;
     super.visitAnnotation(node);
   }
   
   visitClassDeclaration(ClassDeclaration node) {
-    _e = new EnhancerEntity(node);
-    _e.ormpath = ormpath;
+    _current = new EnhancerEntity(node);
+    _current.imports.addAll(_imports);
     super.visitClassDeclaration(node);
-    _es.add(_e);
+    _entities[_current.entityName] = _current;
+    List<EnhancerEntity> es;
+    if (_groups.containsKey(_currentFileName)) {
+      es = _groups[_currentFileName];
+    } else {
+      _groups[_currentFileName] = es = <EnhancerEntity>[];
+    }
+    es.add(_current);
+    _current = null;
+    _imports.clear();
   }
   
   visitMethodDeclaration(MethodDeclaration node) {
-    _e.methods.add(node);
+    _current.methods.add(node);
     super.visitMethodDeclaration(node);
   }
   
+  visitImportDirective(ImportDirective node) {
+    super.visitImportDirective(node);
+    _imports.add(node);
+  }
+  
+  visitExtendsClause(ExtendsClause node) {
+    super.visitExtendsClause(node);
+    _type = null;//Necessary or first property will have this type
+  }
+  
   visitTypeName(TypeName node) {
-    _t = _t == null ? node : _t;
+    if (0 == _typeCounter) {
+      _type = node;
+    } else {
+      --_typeCounter;
+    }
+    if (null != node.typeArguments) {
+      _typeCounter += node.typeArguments.arguments.length;
+    }
     super.visitTypeName(node);
   }
   
   visitVariableDeclaration(VariableDeclaration node) {
     super.visitVariableDeclaration(node);
-    _e.members.add(new Member(_a, _t, node));
-    _a = null;
-    _t = null;
+    if (null != _annotation && _annotation.toString().contains('Id()')) {
+      _current.id = new Member(_annotation, _type, node);
+    }
+    _current.members.add(new Member(_annotation, _type, node));
+    
+    _annotation = null;
+    _type = null;
   }
 }
 
-Future enhance (Iterable<String> files, String ormpath) {
-  Completer c = new Completer();
-  final enhancer = new EntityEnhancer(ormpath);
-  final futures = <Future>[];
-  files.forEach((path) {
-    FileSystemEntity.type(path, followLinks: true).then((type) {
-      switch (type) {
-        case FileSystemEntityType.DIRECTORY:
-          var f = new Directory(path).list(recursive: false, followLinks: true).toList();
-          futures.add(f);
-          f.then((list) => enhance(list.map((file) => file.absolute.path), ormpath),
-              onError: (e) => c.completeError(e));
-          break;
-        case FileSystemEntityType.FILE:
-          futures.add(new File('${p.dirname(path)}/${p.basenameWithoutExtension(path)}.enhanced.dart')
-            .writeAsString(enhancer.enhance(path), mode: FileMode.WRITE));
-          break;
-        case FileSystemEntityType.LINK:
-          var f = new Link(path).target();
-          futures.add(f);
-          f.then((target) 
-              => new File('${p.dirname(target)}/${p.basenameWithoutExtension(target)}.enhanced.dart')
-                  .writeAsString(enhancer.enhance(path), mode: FileMode.WRITE), onError: (e) 
-                    => c.completeError(e));
-          break;
-        case FileSystemEntityType.NOT_FOUND:
-          print('Warning! $path not found');
-          break;
-      }
-    }, onError: (e) => c.completeError(e));
-  });
-  Future.wait(futures, eagerError: true).then((_)
-      => c.complete(_), onError: (e) => c.completeError(e));
-  return c.future;
+class Member {
+  final Annotation annotation;
+  final String typeName;
+  final String vdname, vdnameuc;
+  
+  Member (Annotation this.annotation, TypeName tn, VariableDeclaration vd) 
+  : typeName = null == tn ? tn : tn.toString(),
+    vdname = vd.name.toString(),
+    vdnameuc = vd.name.toString().toUpperCase();
+  
+  String get _type => '${typeName == null ? '' : '$typeName'}';
+  
+  String asGetter () => '$_type get $vdname => _$vdname;';  
+  
+  String asSetter () => '''set $vdname ($_type $vdname) {
+    if ({{EntityMetaName}}.PERSISTABLE_$vdnameuc.validate($vdname)) {
+      _$vdname = $vdname;
+      _meta.onChange(this, {{EntityMetaName}}.FIELD_$vdnameuc);
+    } else {
+      throw new ArgumentError ('$vdname is not valid');
+    }
+  }''';
+  
+  String asParameter () => '$_type $vdname';
+  
+  String asPrivate () => '$_type _$vdname;';
+  
+  String toString () => '$annotation $_type $vdname;';
 }

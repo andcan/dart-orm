@@ -25,7 +25,9 @@ import 'package:path/path.dart' as p;
 import 'package:serialization/serialization.dart';
 import 'package:sqljocky/sqljocky.dart';
 import 'package:utils/utils.dart';
+import 'package:utils/mirror.dart';
 
+part 'orm/annotation.dart'; 
 part 'orm/enhancer.dart';
 part 'orm/entity.dart';
 part 'orm/datastore/datastore.dart';

@@ -18,11 +18,12 @@
 library hop_runner;
 
 import 'package:hop/hop.dart';
-import 'package:utils/task.dart';
-
+import 'package:orm/task.dart';
+import 'package:utils/task.dart' as ut;
 
 void main (List<String> args) {
-  addTask(CMD_INSTALL, installTask());
-  addTask('add-header', addHeaderTask());
+  addTask('install', ut.installTask());
+  addTask('add-header', ut.addHeaderTask());
+  addTask('enhance', enhanceTask());
   runHop(args);
 }

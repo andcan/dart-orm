@@ -28,9 +28,9 @@ class Event {
 
 class ContentChangeEvent<T> extends Event {
   final T entity;
-  final List<Symbol> fields;
+  final List<String> fields;
   
-  ContentChangeEvent(this.entity, this.fields);
+  ContentChangeEvent(T this.entity, List<String> this.fields);
 }
 
 abstract class EntityMeta<E extends Entity> {
@@ -42,21 +42,27 @@ abstract class EntityMeta<E extends Entity> {
   
   EntityMeta ();
   
-  Symbol get entityName;
+  String get entityName;
   
-  Symbol get idFieldName;
+  Symbol get entityNameSym;
+  
+  String get idName;
+  
+  Symbol get idNameSym;
   
   List asList(E e);
   
   Map<String, dynamic> asMap (E e);
   
-  Map<Symbol, dynamic> asSymbolizedMap (E e);
+  Map<Symbol, dynamic> asMapSym (E e);
   
   String delete (E entity);
   
+  Object get (E entity, String field);
+  
   String insert (E entity, {bool ignore: false});
   
-  void onChange (E entity, Symbol field) {
+  void onChange (E entity, String field) {
     if (changeStreamController == null) {
       throw new StateError('invalid stream');
     } else if (changeStreamController.isNotAbsent) {
@@ -71,20 +77,20 @@ abstract class EntityMeta<E extends Entity> {
           _last.fields.add(field);
         }
       }
-    } /*else {
+    }//else {
       //Nothing to do: object must be persisted first
-    }*/
+    //}
   }
   
-  String select (E entity, [List<Symbol> fields]);
+  String select (E entity, [List<String> fields]);
   
-  String selectAll (List<E> entities, [List<Symbol> fields]);
+  String selectAll (List<E> entities, [List<String> fields]);
   
-  String update (List<Symbol> fields, List values);
+  String update (E entity, List values, [List<String> fields]);
   
-  static EntityMeta of (Entity e) => e._meta;
+  static EntityMeta of (Entity e) => e.entityMetadata;
 }
 
 abstract class Entity<T> {
-  EntityMeta get _meta;
+  EntityMeta get entityMetadata;
 }

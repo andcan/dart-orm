@@ -16,7 +16,7 @@
  */
 part of orm;
 
-class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
+class MySqlDataStore<E extends Entity> implements DataStore<E> {
   
   Orm _orm;
   
@@ -24,7 +24,7 @@ class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
       _puts = new Map<Symbol, Query> (), _upds = new Map<Symbol, Query> ();
   final ConnectionPool pool;
   
-  MySqlDataStore(this.pool);
+  MySqlDataStore(ConnectionPool this.pool);
   
   Database get type => Database.MYSQL;
   
@@ -68,14 +68,14 @@ class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
     return c.future;
   }
   
-  Future<List<Optional<E>>> _getAll (Iterable<Optional<E>> es, EntityMeta meta, [List<Symbol> fields]) {
+  Future<List<Optional<E>>> _getAll (Iterable<E> es, EntityMeta meta, [List<String> fields]) {
     Completer<List<Optional<E>>> c = new Completer<List<Optional<E>>>();
-    Symbol id = meta.idFieldName;
+    String id = meta.id;
     List<Optional<E>> list = <Optional<E>>[];
     InstanceMirror mirror;
     if (null != fields) {
       if (!fields.contains(id)) {
-        fields.add(meta.idFieldName);
+        fields.add(id);
       }
     }
     pool.startTransaction(consistent: true).then((transaction) {
@@ -83,13 +83,13 @@ class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
         int length = es.length;
         List<Field> fs = results.fields;
         Field idField = fs.firstWhere((test) 
-            => test.name == MirrorSystem.getName(meta.idFieldName), orElse: () => null);
+            => test.name == meta.id, orElse: () => null);
         int idIndex = fs.indexOf(idField);
         results.toList().then((rs) {
           for (int i = 0; i < length; ++i) {
-            E e = es.elementAt(i).value;
+            E e = es.elementAt(i);
             mirror = reflect (e);
-            Row result = rs.firstWhere((test) => test[idField.name] == mirror.getField(id));
+            Row result = rs.firstWhere((test) => test[idField.name] == mirror.getField(meta.idSym));
             if (null == result) {
               list.add(new Optional<E>.absent());
             } else {
@@ -102,35 +102,35 @@ class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
               } else {
                 fields.forEach((field) {
                   Field f = fs.firstWhere((test) 
-                      => test.name == MirrorSystem.getName(field), orElse: () => null);
+                      => test.name == field, orElse: () => null);
                   if (null == f) {
                     throw new StateError('Field $field not found');
                   }
-                  mirror.setField(field, result[fs.indexOf(f)]);
+                  mirror.setField(symbol(field), result[fs.indexOf(f)]);
                 });
               }
               list.add(new Optional (mirror.reflectee));
             }
           }
         }, onError: (e) => throw e).whenComplete(() 
-            => transaction.commit().then(c.complete(list), 
+            => transaction.commit().then((_) => c.complete(list), 
                 onError: (e) => c.completeError(e)));
       });
     }, onError: (e) => throw e);
     return c.future;
   }
   
-  Future<List<Optional<E>>> getAll (List<Optional<E>> es, [List<Symbol> fields]) {
+  Future<List<Optional<E>>> getAll (List<E> es, [List<String> fields]) {
     Completer<List<E>> c = new Completer<List<E>> ();
     InstanceMirror mirror;
-    EntityMeta meta = EntityMeta.of(es.first.value);
+    EntityMeta meta = EntityMeta.of(es.first);
     if (es.every((test) => EntityMeta.of(test).entityName == meta.entityName)) {
         return _getAll(es, meta, fields);
     } else {
       List<Optional<E>> all = <Optional<E>>[];
       Iterable<Optional<E>> same;
       do {
-        meta = EntityMeta.of(es.first.value);
+        meta = EntityMeta.of(es.first);
         same = es.where((test) => EntityMeta.of(test).entityName == meta.entityName);
         same.forEach((f) => es.remove(f));
         bool last = es.isEmpty;
@@ -156,23 +156,23 @@ class MySqlDataStore<E extends EnhancerEntity> implements DataStore<E> {
         transaction.commit().then((_) => c.complete(results), onError: handleError);
       }, onError: handleError);
     });
+    
     return c.future;
   }
   
-  Future<Results> update (E e, List<Symbol> fields) {
+  Future<Results> update (E e, List<String> fields) {
     Completer<Results> c = new Completer<Results> ();
     InstanceMirror mirror = reflect (e);
     List values = [];
-    fields.forEach((field) => values.add(mirror.getField(field).reflectee));
+    fields.forEach((field) => values.add(mirror.getField(symbol(field)).reflectee));
     pool.startTransaction(consistent: true).then((transaction) {
       Function handleError = (e) {
         transaction.rollback().then((_) 
             => c.completeError(e), onError: (e) => c.completeError(e));
       };
-      transaction.prepareExecute(EntityMeta.of(e).update(fields, values), []).then((results) 
-          => transaction.commit().then((_) 
-              => c.complete(results), onError: handleError),
-              onError: handleError);
+      transaction.prepareExecute(EntityMeta.of(e).update(e, values, fields), []).then((results) =>
+              transaction.commit().then((_) => c.complete(results),
+              onError: handleError), onError: handleError);
     });
     return c.future;
   }

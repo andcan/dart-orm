@@ -59,7 +59,7 @@ class Database {
   });
 }
 
-abstract class DataStore<E extends EnhancerEntity> {
+abstract class DataStore<E extends Entity> {
   Orm _orm;
   
   Database get type;
@@ -72,9 +72,9 @@ abstract class DataStore<E extends EnhancerEntity> {
   
   Future<Optional<E>> get (E e);
   
-  Future<List<Optional<E>>> getAll (List<Optional<E>> es);
+  Future<List<Optional<E>>> getAll (List<E> es);
   
   Future<Results> put (E e);
   
-  Future<Results> update (E e, List<Symbol> symbols);
+  Future<Results> update (E e, List<String> symbols);
 }

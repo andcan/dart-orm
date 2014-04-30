@@ -4,15 +4,19 @@ packages:
   analyzer:
     description: analyzer
     source: hosted
-    version: "0.13.4"
+    version: "0.14.2"
   args:
     description: args
     source: hosted
     version: "0.10.0+2"
+  barback:
+    description: barback
+    source: hosted
+    version: "0.12.0"
   bot:
     description: bot
     source: hosted
-    version: "0.26.1+1"
+    version: "0.26.2"
   bot_io:
     description: bot_io
     source: hosted
@@ -20,7 +24,7 @@ packages:
   collection:
     description: collection
     source: hosted
-    version: "0.9.1"
+    version: "0.9.2"
   completion:
     description: completion
     source: hosted
@@ -32,15 +36,19 @@ packages:
   git:
     description: git
     source: hosted
-    version: "0.3.0"
+    version: "0.3.0+1"
   hop:
     description: hop
     source: hosted
-    version: "0.30.3"
+    version: "0.30.3+1"
   hop_docgen:
     description: hop_docgen
     source: hosted
     version: "0.1.2+2"
+  html5lib:
+    description: html5lib
+    source: hosted
+    version: "0.10.0"
   logging:
     description: logging
     source: hosted
@@ -52,7 +60,7 @@ packages:
   mock:
     description: mock
     source: hosted
-    version: "0.10.0"
+    version: "0.10.0+1"
   options_file:
     description: options_file
     source: hosted
@@ -65,22 +73,30 @@ packages:
     description: serialization
     source: hosted
     version: "0.9.1"
+  source_maps:
+    description: source_maps
+    source: hosted
+    version: "0.9.0"
   sqljocky:
     description: sqljocky
     source: hosted
-    version: "0.10.0"
+    version: "0.11.0"
   stack_trace:
     description: stack_trace
     source: hosted
-    version: "0.9.3"
+    version: "0.9.3+1"
   unittest:
     description: unittest
     source: hosted
     version: "0.10.1+2"
+  utf:
+    description: utf
+    source: hosted
+    version: "0.9.0"
   utils:
     description:
       ref: null
-      resolved-ref: "3ab896c64e2caaa2a18a1fa7613a51858c02d14a"
+      resolved-ref: "1a7922a75f1b02b971b195ecce7d5b2724a358e1"
       url: "git://github.com/k4rr1m/dart-utils"
     source: git
     version: "0.0.0"

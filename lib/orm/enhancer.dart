@@ -410,7 +410,7 @@ class EntityEnhancer extends GeneralizingAstVisitor {
   
   visitVariableDeclaration(VariableDeclaration node) {
     super.visitVariableDeclaration(node);
-    if (null != _annotation && _annotation.toString().contains('Id()')) {
+    if (null != _annotation && _annotation.toString().contains('Id')) {
       _current.id = new Member(_annotation, _type, node);
     }
     _current.members.add(new Member(_annotation, _type, node));

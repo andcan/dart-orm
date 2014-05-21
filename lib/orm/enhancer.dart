@@ -9,10 +9,12 @@ class EnhancerEntity {
   final bool hasParent;
   final bool isAbstract;
   
-  final List<ImportDirective> imports = [];
-  final List<Member> members = [];
+  final List<ImportDirective> imports = <ImportDirective>[];
+  final List<Member> members = <Member>[];
   final List<MethodDeclaration> methods = <MethodDeclaration>[];
   
+  Iterable<EnhancerEntity> entities;
+  Iterable<String> files;
   Member id;
   EnhancerEntity superclass;
   
@@ -189,14 +191,17 @@ class EnhancerEntity {
   String _imports () {
     _buffer.clear();
     imports.forEach((i) {
+      String imp = i.toString();
       if (null != superclass) {
-        String imp = i.toString();
         String target = '${superclass.entityNamelc}.dart';
         _buffer.write('${imp.contains(target) 
           ? imp.replaceFirst(target, '${superclass.entityNamelc}.e.dart') 
               : imp}\n');
+      }
+      if (files.contains(p.basename(i.uri.toString().replaceAll("'", '')))) {
+        _buffer.write('${imp.replaceAll('.dart', '.e.dart')}\n');
       } else {
-        _buffer.write('$i\n');
+        _buffer.write('$imp\n');
       }
     });
     return _buffer.toString();
@@ -211,7 +216,15 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write(tmp);
-    members.forEach((member) => _buffer.write("'\${$entityNamelc.${member.vdname}}', "));
+    members.forEach((member) {
+      EnhancerEntity e = entities.firstWhere((test) => test.entityName == member.typeName,
+          orElse: () => null);
+      if (null == e) {
+        _buffer.write("'\${$entityNamelc.${member.vdname}}', ");
+      } else {
+        _buffer.write("'\${$entityNamelc.entityMetadata.get($entityNamelc, $entityNamelc.entityMetadata.idName)}, ");
+      }
+    });
     return '${_buffer.toString().substring(0, _buffer.length - 2)});";';
   }
   
@@ -296,25 +309,40 @@ class EnhancerEntity {
         ..write("static const String SQL_CREATE = 'CREATE TABLE $entityName (");
     _allMembers().forEach((member) {
       Map<String, String> args = _annotationArguments(member.annotation);
-      String sqlType;
-      switch (member.typeName) {
-        case 'int':
-          sqlType = 'INT';
-          break;
-        case 'num':
-          sqlType = 'DOUBLE';
-          break;
-        case 'String':
-          if (args.containsKey('max')) {
-            sqlType = 'VARCHAR(${args['max']})';
-          } else {
-            sqlType = 'VARCHAR(256)';
-          }
-          break;
-      }
+      String sqlType = _sqlTypeForMember(member);
       _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
     });
     return "${_buffer.toString().substring(0, _buffer.length - 2)});';";
+  }
+  
+  String _sqlTypeForMember (Member member) {
+    Map<String, String> args = _annotationArguments(member.annotation);
+    switch (member.typeName) {
+      case 'int':
+        return 'INT';
+        break;
+      case 'double':
+      case 'num':
+        return 'DOUBLE';
+        break;
+      case 'String':
+        if (args.containsKey('max')) {
+          return 'VARCHAR(${args['max']})';
+        }
+        if (args.containsKey('length')) {
+          return 'VARCHAR(${args['length']})';
+        }
+        return 'VARCHAR(256)';
+        break;
+      default:
+        EnhancerEntity e = entities.firstWhere((test) =>
+            test.entityName == member.typeName, orElse: () => null);
+        if (null != e) {
+          return _sqlTypeForMember(e.id);
+        }
+        break;
+    }
+    return null;
   }
   
   String _update () => '''String update ($entityName $entityNamelc, List values, [List<String> fields]) {
@@ -405,9 +433,10 @@ class EntityEnhancer extends GeneralizingAstVisitor {
         String superclass = clause.superclass.name.name;
         if (_entities.containsKey(superclass)) {
           entity.superclass = _entities[superclass];
-          
         }
       }
+      entity.entities = _entities.values;
+      entity.files = contents.keys.map((f) => p.basename(f));
     });
     Map<String, List<String>> es = <String, List<String>>{};
     _groups.forEach((file, entities) {

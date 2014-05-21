@@ -1,4 +1,6 @@
 import 'package:orm/orm.dart';
+import 'package:orm/orm.dart';
+import 'hardware.e.dart';
 import 'hardware.e.dart';
 
 class Gpu extends Hardware {

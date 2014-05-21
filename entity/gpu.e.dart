@@ -4,6 +4,21 @@ import 'hardware.e.dart';
 class Gpu extends Hardware {
   int _memorySize;
   
+  Gpu ({int id, String name, String productor, int memorySize})
+  : super(id: id,
+    name: name,
+    productor: productor), this._memorySize = memorySize;
+
+  Gpu.fromMap (Map<String, dynamic> values)
+  : super(id: values['id'],
+    name: values['name'],
+    productor: values['productor']), this._memorySize = values['memorySize'];
+
+  Gpu.fromMapSym (Map<Symbol, dynamic> values)
+  : super(id: values[HardwareMeta.SYMBOL_ID],
+    name: values[HardwareMeta.SYMBOL_NAME],
+    productor: values[HardwareMeta.SYMBOL_PRODUCTOR]), this._memorySize = values[GpuMeta.SYMBOL_MEMORYSIZE];
+  
   int get memorySize => _memorySize;
   GpuMeta get entityMetadata => _meta;
   

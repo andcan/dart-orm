@@ -83,6 +83,62 @@ class EnhancerEntity {
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  };';
   }
   
+  String _constructors() {
+    //Standard constructor
+    _buffer..clear()
+      ..write('$entityName ({');
+    if (hasParent) {
+      superclass.members.forEach((member) => 
+                _buffer.write('${member.typeName} ${member.vdname}, '));
+    }
+    members.forEach((member) =>
+        _buffer.write('${member.typeName} ${member.vdname}, '));
+    String tmp = _buffer.toString().substring(0, _buffer.length - 2);
+    _buffer..clear()
+      ..write('$tmp})\n  : ');
+    if (hasParent) {
+      _buffer.write('super(');
+      superclass.members.forEach((member) => 
+                _buffer.write('${member.vdname}: ${member.vdname},\n    '));
+      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
+      _buffer..clear()
+        ..write(tmp);
+    }
+    members.forEach((member) =>
+            _buffer.write('this._${member.vdname} = ${member.vdname},\n    '));
+    tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
+    _buffer..clear()
+      ..write('$tmp\n\n  ');
+    //String map constructor
+    _buffer.write('$entityName.fromMap (Map<String, dynamic> values)\n  : ');
+    if (hasParent) {
+      _buffer.write('super(');
+      superclass.members.forEach((member) => 
+          _buffer.write("${member.vdname}: values['${member.vdname}'],\n    "));
+      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
+      _buffer..clear()
+        ..write(tmp);
+    }
+    members.forEach((member) =>
+        _buffer.write("this._${member.vdname} = values['${member.vdname}'],\n    "));
+    tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
+    _buffer..clear()
+      ..write('$tmp\n\n  ');
+    //Symbol map constructor
+    _buffer.write('$entityName.fromMapSym (Map<Symbol, dynamic> values)\n  : ');
+    if (hasParent) {
+      _buffer.write('super(');
+      superclass.members.forEach((member) => 
+          _buffer.write('${member.vdname}: values[${superclass.entityMetaName}.SYMBOL_${member.vdnameuc}],\n    '));
+      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
+      _buffer..clear()
+        ..write(tmp);
+    }
+    members.forEach((member) =>
+        _buffer.write("this._${member.vdname} = values[$entityMetaName.SYMBOL_${member.vdnameuc}],\n    "));
+    return '${_buffer.toString().substring(0, _buffer.length - 6)};';
+  }
+  
   String _delete () => 'String delete ($entityName $entityNamelc) => "DELETE FROM $entityName WHERE $entityName.\$idName = \'\${get($entityNamelc, idName)}\';";';
   
   String _fields () {
@@ -276,6 +332,8 @@ class EnhancerEntity {
   String toString () => '''${_imports()}
 ${isAbstract ? 'abstract ' : ''}class $entityName extends ${hasParent ? extendsClause.superclass : 'Entity'} {
   ${_properties()}
+  
+  ${_constructors()}
   
   ${_getters()}
   $entityMetaName get entityMetadata => _meta;

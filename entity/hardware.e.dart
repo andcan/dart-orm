@@ -5,6 +5,21 @@ class Hardware extends Entity {
   String _name;
   String _productor;
   
+  Hardware ({int id, String name, String productor})
+  : this._id = id,
+    this._name = name,
+    this._productor = productor;
+
+  Hardware.fromMap (Map<String, dynamic> values)
+  : this._id = values['id'],
+    this._name = values['name'],
+    this._productor = values['productor'];
+
+  Hardware.fromMapSym (Map<Symbol, dynamic> values)
+  : this._id = values[HardwareMeta.SYMBOL_ID],
+    this._name = values[HardwareMeta.SYMBOL_NAME],
+    this._productor = values[HardwareMeta.SYMBOL_PRODUCTOR];
+  
   int get id => _id;
   String get name => _name;
   String get productor => _productor;

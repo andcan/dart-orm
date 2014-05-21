@@ -86,7 +86,8 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     }
   }
   
-  String insert (Gpu gpu, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES ('${gpu.memorySize}');";
+  String insert (Gpu gpu, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES (${gpu is! Entity ? '${gpu.memorySize}'
+    : '${gpu.entityMetadata.get(gpu, gpu.entityMetadata.idName)}'});";
   
   String select (Gpu gpu, [List<String> fields]) {
     if (null == fields) {
@@ -122,7 +123,11 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
       throw new ArgumentError('fields cannot be empty');
     }
     StringBuffer query = new StringBuffer('UPDATE Gpu SET ');
-    fields.forEach((f) => query.write("$f = '${get(gpu, f)}', "));
+    fields.forEach((f) {
+      var value = get(gpu, f);
+      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
+        : value}', ");
+    });
     return "${query.toString().substring(0, query.length - 2)} WHERE Gpu.$idName = '${get(gpu, idName)}';";
   }
   

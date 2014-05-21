@@ -81,7 +81,9 @@ class CoinMeta extends EntityMeta<Coin> {
     }
   }
   
-  String insert (Coin coin, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES ('${coin.marketId}', '${coin.name}');";
+  String insert (Coin coin, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${coin is! Entity ? '${coin.marketId}'
+    : '${coin.entityMetadata.get(coin, coin.entityMetadata.idName)}'}, ${coin is! Entity ? '${coin.name}'
+    : '${coin.entityMetadata.get(coin, coin.entityMetadata.idName)}'});";
   
   String select (Coin coin, [List<String> fields]) {
     if (null == fields) {
@@ -117,7 +119,11 @@ class CoinMeta extends EntityMeta<Coin> {
       throw new ArgumentError('fields cannot be empty');
     }
     StringBuffer query = new StringBuffer('UPDATE Coin SET ');
-    fields.forEach((f) => query.write("$f = '${get(coin, f)}', "));
+    fields.forEach((f) {
+      var value = get(coin, f);
+      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
+        : value}', ");
+    });
     return "${query.toString().substring(0, query.length - 2)} WHERE Coin.$idName = '${get(coin, idName)}';";
   }
   

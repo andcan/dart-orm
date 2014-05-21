@@ -217,13 +217,7 @@ class EnhancerEntity {
         ..clear()
         ..write(tmp);
     members.forEach((member) {
-      EnhancerEntity e = entities.firstWhere((test) => test.entityName == member.typeName,
-          orElse: () => null);
-      if (null == e) {
-        _buffer.write("'\${$entityNamelc.${member.vdname}}', ");
-      } else {
-        _buffer.write("'\${$entityNamelc.entityMetadata.get($entityNamelc, $entityNamelc.entityMetadata.idName)}, ");
-      }
+      _buffer.write("\${$entityNamelc is! Entity ? '\${$entityNamelc.${member.vdname}}'\n    : '\${$entityNamelc.entityMetadata.get($entityNamelc, $entityNamelc.entityMetadata.idName)}'}, ");
     });
     return '${_buffer.toString().substring(0, _buffer.length - 2)});";';
   }
@@ -353,7 +347,11 @@ class EnhancerEntity {
       throw new ArgumentError('fields cannot be empty');
     }
     StringBuffer query = new StringBuffer('UPDATE $entityName SET ');
-    fields.forEach((f) => query.write("\$f = '\${get($entityNamelc, f)}', "));
+    fields.forEach((f) {
+      var value = get($entityNamelc, f);
+      query.write("\$f = '\${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
+        : value}', ");
+    });
     return "\${query.toString().substring(0, query.length - 2)} WHERE $entityName.\$idName = '\${get($entityNamelc, idName)}';";
   }''';
       

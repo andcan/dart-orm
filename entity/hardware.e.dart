@@ -100,7 +100,10 @@ class HardwareMeta extends EntityMeta<Hardware> {
     }
   }
   
-  String insert (Hardware hardware, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES ('${hardware.id}', '${hardware.name}', '${hardware.productor}');";
+  String insert (Hardware hardware, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${hardware is! Entity ? '${hardware.id}'
+    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'}, ${hardware is! Entity ? '${hardware.name}'
+    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'}, ${hardware is! Entity ? '${hardware.productor}'
+    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'});";
   
   String select (Hardware hardware, [List<String> fields]) {
     if (null == fields) {
@@ -136,7 +139,11 @@ class HardwareMeta extends EntityMeta<Hardware> {
       throw new ArgumentError('fields cannot be empty');
     }
     StringBuffer query = new StringBuffer('UPDATE Hardware SET ');
-    fields.forEach((f) => query.write("$f = '${get(hardware, f)}', "));
+    fields.forEach((f) {
+      var value = get(hardware, f);
+      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
+        : value}', ");
+    });
     return "${query.toString().substring(0, query.length - 2)} WHERE Hardware.$idName = '${get(hardware, idName)}';";
   }
   

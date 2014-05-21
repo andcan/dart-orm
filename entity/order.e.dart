@@ -139,7 +139,12 @@ class OrderMeta extends EntityMeta<Order> {
     }
   }
   
-  String insert (Order order, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES ('${order.id}', '${order.entityMetadata.get(order, order.entityMetadata.idName)}, '${order.price}', '${order.entityMetadata.get(order, order.entityMetadata.idName)}, '${order.total}');";
+  String insert (Order order, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${order is! Entity ? '${order.id}'
+    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.first}'
+    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.price}'
+    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.second}'
+    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.total}'
+    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'});";
   
   String select (Order order, [List<String> fields]) {
     if (null == fields) {
@@ -175,7 +180,11 @@ class OrderMeta extends EntityMeta<Order> {
       throw new ArgumentError('fields cannot be empty');
     }
     StringBuffer query = new StringBuffer('UPDATE Order SET ');
-    fields.forEach((f) => query.write("$f = '${get(order, f)}', "));
+    fields.forEach((f) {
+      var value = get(order, f);
+      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
+        : value}', ");
+    });
     return "${query.toString().substring(0, query.length - 2)} WHERE Order.$idName = '${get(order, idName)}';";
   }
   

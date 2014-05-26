@@ -81,9 +81,13 @@ class CoinMeta extends EntityMeta<Coin> {
     }
   }
   
-  String insert (Coin coin, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${coin is! Entity ? '${coin.marketId}'
-    : '${coin.entityMetadata.get(coin, coin.entityMetadata.idName)}'}, ${coin is! Entity ? '${coin.name}'
-    : '${coin.entityMetadata.get(coin, coin.entityMetadata.idName)}'});";
+  String insert (Coin coin, {bool ignore: false}) {
+    var marketId = coin.marketId;
+    var name = coin.name;
+    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${marketId is! Entity ? '${marketId}'
+    : '${marketId.entityMetadata.get(marketId, marketId.entityMetadata.idName)}'}, ${name is! Entity ? '${name}'
+    : '${name.entityMetadata.get(name, name.entityMetadata.idName)}'});';
+  }
   
   String select (Coin coin, [List<String> fields]) {
     if (null == fields) {
@@ -111,6 +115,20 @@ class CoinMeta extends EntityMeta<Coin> {
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${coins.length};';
   }
   
+  void set (Coin coin, String field, value) {
+    switch (field) {
+      case 'marketId':
+        coin.marketId = value;
+        break;
+      case 'name':
+        coin.name = value;
+        break;
+      default:
+          throw new ArgumentError('Invalid field $field');
+          break;
+    }
+  }
+  
   String update (Coin coin, List values, [List<String> fields]) {
     if (null == fields) {
       fields = CoinMeta.FIELDS;
@@ -135,7 +153,7 @@ class CoinMeta extends EntityMeta<Coin> {
     FIELD_MARKETID,
     FIELD_NAME
   ];
-  static const String SQL_CREATE = 'CREATE TABLE Coin (marketId INT NOT NULL, name VARCHAR(256) NOT NULL);';
+  static const String SQL_CREATE = 'CREATE TABLE Coin (marketId INT NOT NULL, name VARCHAR(25) NOT NULL, PRIMARY KEY(marketId));';
   static const Persistable PERSISTABLE_MARKETID = const IntPersistable (max: 206),
     PERSISTABLE_NAME = const StringPersistable (length: 25);
   static const Symbol SYMBOL_MARKETID = const Symbol('marketId'),

@@ -47,7 +47,7 @@ class EnhancerEntity {
     a.arguments.arguments.forEach((arg) {
       String argument = arg.toString();
       int pos = argument.indexOf(':');
-      args[argument.substring(0, pos - 1)] = argument.substring(pos + 2);
+      args[argument.substring(0, pos)] = argument.substring(pos + 2);
     });
     return args;
   }
@@ -210,16 +210,18 @@ class EnhancerEntity {
   String _insert () {
     _buffer
         ..clear()
-        ..write('String insert ($entityName $entityNamelc, {bool ignore: false}) => "INSERT \${ignore ? \'ignore \' : \' \'}INTO $entityName (');
+        ..write('String insert ($entityName $entityNamelc, {bool ignore: false}) {');
+    members.forEach((member) => _buffer.write('\n    var ${member.vdname} = $entityNamelc.${member.vdname};'));
+    _buffer.write("\n    return 'INSERT\${ignore ? \'ignore \' : \' \'}INTO $entityName (");
     members.forEach((member) => _buffer.write('${member.vdname}, '));
     String tmp = '${_buffer.toString().substring(0, _buffer.length - 2)}) VALUES (';
     _buffer
         ..clear()
         ..write(tmp);
     members.forEach((member) {
-      _buffer.write("\${$entityNamelc is! Entity ? '\${$entityNamelc.${member.vdname}}'\n    : '\${$entityNamelc.entityMetadata.get($entityNamelc, $entityNamelc.entityMetadata.idName)}'}, ");
+      _buffer.write("\${${member.vdname} is! Entity ? '\${${member.vdname}}'\n    : '\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'}, ");
     });
-    return '${_buffer.toString().substring(0, _buffer.length - 2)});";';
+    return "${_buffer.toString().substring(0, _buffer.length - 2)});';\n  }";
   }
   
   String _persistables () {
@@ -277,6 +279,23 @@ class EnhancerEntity {
     return '\${query.toString().substring(0, query.length - 2)}) LIMIT \${${entityNamelc}s.length};';
   }''';
   
+  String _set () {
+      _buffer
+          ..clear()
+          ..write('void set ($entityName $entityNamelc, String field, value) {\n    switch (field) {\n');
+      List<Member> ms = <Member>[];
+      if (hasParent) {
+        ms.addAll(superclass.members);
+      }
+      ms.addAll(members);
+      ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        $entityNamelc.${member.vdname} = value;\n        break;\n"));
+      return '''$_buffer      default:
+        throw new ArgumentError('Invalid field \$field');
+        break;
+    }
+  }''';
+    }
+  
   String _setters () {
     _buffer.clear();
     members.forEach((member) => _buffer.write('${member.asSetter()}\n  '));
@@ -306,7 +325,7 @@ class EnhancerEntity {
       String sqlType = _sqlTypeForMember(member);
       _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
     });
-    return "${_buffer.toString().substring(0, _buffer.length - 2)});';";
+    return "${_buffer.toString().substring(0, _buffer.length - 2)}, PRIMARY KEY(${identifier.vdname}));';";
   }
   
   String _sqlTypeForMember (Member member) {
@@ -391,6 +410,8 @@ class $entityMetaName ${hasParent ? 'extends ${extendsClause.superclass}Meta imp
   ${_select()}
   
   ${_selectAll()}
+  
+  ${_set()}
   
   ${_update()}
   

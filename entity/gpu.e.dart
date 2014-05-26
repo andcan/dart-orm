@@ -86,8 +86,11 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     }
   }
   
-  String insert (Gpu gpu, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES (${gpu is! Entity ? '${gpu.memorySize}'
-    : '${gpu.entityMetadata.get(gpu, gpu.entityMetadata.idName)}'});";
+  String insert (Gpu gpu, {bool ignore: false}) {
+    var memorySize = gpu.memorySize;
+    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES (${memorySize is! Entity ? '${memorySize}'
+    : '${memorySize.entityMetadata.get(memorySize, memorySize.entityMetadata.idName)}'});';
+  }
   
   String select (Gpu gpu, [List<String> fields]) {
     if (null == fields) {
@@ -115,6 +118,26 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${gpus.length};';
   }
   
+  void set (Gpu gpu, String field, value) {
+    switch (field) {
+      case 'id':
+        gpu.id = value;
+        break;
+      case 'name':
+        gpu.name = value;
+        break;
+      case 'productor':
+        gpu.productor = value;
+        break;
+      case 'memorySize':
+        gpu.memorySize = value;
+        break;
+      default:
+          throw new ArgumentError('Invalid field $field');
+          break;
+    }
+  }
+  
   String update (Gpu gpu, List values, [List<String> fields]) {
     if (null == fields) {
       fields = GpuMeta.FIELDS;
@@ -140,7 +163,7 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     HardwareMeta.FIELD_PRODUCTOR,
     FIELD_MEMORYSIZE
   ];
-  static const String SQL_CREATE = 'CREATE TABLE Gpu (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(256) NOT NULL, memorySize INT NOT NULL);';
+  static const String SQL_CREATE = 'CREATE TABLE Gpu (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(1500) NOT NULL, memorySize INT NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_MEMORYSIZE = const IntPersistable (max: 100 * 1024 * 1024);
   static const Symbol SYMBOL_MEMORYSIZE = const Symbol('memorySize');
 }

@@ -152,6 +152,7 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
         transaction.rollback().then((_) 
             => c.completeError(e), onError: (e) => c.completeError(e));
       };
+      print (EntityMeta.of(e).insert(e));
       transaction.prepareExecute(EntityMeta.of(e).insert(e), []).then((results) {
         transaction.commit().then((_) => c.complete(results), onError: handleError);
       }, onError: handleError);

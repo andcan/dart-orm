@@ -139,12 +139,19 @@ class OrderMeta extends EntityMeta<Order> {
     }
   }
   
-  String insert (Order order, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${order is! Entity ? '${order.id}'
-    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.first}'
-    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.price}'
-    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.second}'
-    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'}, ${order is! Entity ? '${order.total}'
-    : '${order.entityMetadata.get(order, order.entityMetadata.idName)}'});";
+  String insert (Order order, {bool ignore: false}) {
+    var id = order.id;
+    var first = order.first;
+    var price = order.price;
+    var second = order.second;
+    var total = order.total;
+    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${id is! Entity ? '${id}'
+    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${first is! Entity ? '${first}'
+    : '${first.entityMetadata.get(first, first.entityMetadata.idName)}'}, ${price is! Entity ? '${price}'
+    : '${price.entityMetadata.get(price, price.entityMetadata.idName)}'}, ${second is! Entity ? '${second}'
+    : '${second.entityMetadata.get(second, second.entityMetadata.idName)}'}, ${total is! Entity ? '${total}'
+    : '${total.entityMetadata.get(total, total.entityMetadata.idName)}'});';
+  }
   
   String select (Order order, [List<String> fields]) {
     if (null == fields) {
@@ -170,6 +177,29 @@ class OrderMeta extends EntityMeta<Order> {
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Order WHERE Order.id IN (');
     orders.forEach((order) => query.write("'${order.id}', "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${orders.length};';
+  }
+  
+  void set (Order order, String field, value) {
+    switch (field) {
+      case 'id':
+        order.id = value;
+        break;
+      case 'first':
+        order.first = value;
+        break;
+      case 'price':
+        order.price = value;
+        break;
+      case 'second':
+        order.second = value;
+        break;
+      case 'total':
+        order.total = value;
+        break;
+      default:
+          throw new ArgumentError('Invalid field $field');
+          break;
+    }
   }
   
   String update (Order order, List values, [List<String> fields]) {
@@ -202,7 +232,7 @@ class OrderMeta extends EntityMeta<Order> {
     FIELD_SECOND,
     FIELD_TOTAL
   ];
-  static const String SQL_CREATE = 'CREATE TABLE Order (id INT NOT NULL, first INT NOT NULL, price DOUBLE NOT NULL, second INT NOT NULL, total DOUBLE NOT NULL);';
+  static const String SQL_CREATE = 'CREATE TABLE Order (id INT NOT NULL, first INT NOT NULL, price DOUBLE NOT NULL, second INT NOT NULL, total DOUBLE NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_ID = const IntPersistable (),
     PERSISTABLE_FIRST = const Persistable (),
     PERSISTABLE_PRICE = const Persistable (),

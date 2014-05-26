@@ -100,10 +100,15 @@ class HardwareMeta extends EntityMeta<Hardware> {
     }
   }
   
-  String insert (Hardware hardware, {bool ignore: false}) => "INSERT ${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${hardware is! Entity ? '${hardware.id}'
-    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'}, ${hardware is! Entity ? '${hardware.name}'
-    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'}, ${hardware is! Entity ? '${hardware.productor}'
-    : '${hardware.entityMetadata.get(hardware, hardware.entityMetadata.idName)}'});";
+  String insert (Hardware hardware, {bool ignore: false}) {
+    var id = hardware.id;
+    var name = hardware.name;
+    var productor = hardware.productor;
+    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${id is! Entity ? '${id}'
+    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${name is! Entity ? '${name}'
+    : '${name.entityMetadata.get(name, name.entityMetadata.idName)}'}, ${productor is! Entity ? '${productor}'
+    : '${productor.entityMetadata.get(productor, productor.entityMetadata.idName)}'});';
+  }
   
   String select (Hardware hardware, [List<String> fields]) {
     if (null == fields) {
@@ -129,6 +134,23 @@ class HardwareMeta extends EntityMeta<Hardware> {
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Hardware WHERE Hardware.id IN (');
     hardwares.forEach((hardware) => query.write("'${hardware.id}', "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${hardwares.length};';
+  }
+  
+  void set (Hardware hardware, String field, value) {
+    switch (field) {
+      case 'id':
+        hardware.id = value;
+        break;
+      case 'name':
+        hardware.name = value;
+        break;
+      case 'productor':
+        hardware.productor = value;
+        break;
+      default:
+          throw new ArgumentError('Invalid field $field');
+          break;
+    }
   }
   
   String update (Hardware hardware, List values, [List<String> fields]) {
@@ -157,7 +179,7 @@ class HardwareMeta extends EntityMeta<Hardware> {
     FIELD_NAME,
     FIELD_PRODUCTOR
   ];
-  static const String SQL_CREATE = 'CREATE TABLE Hardware (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(256) NOT NULL);';
+  static const String SQL_CREATE = 'CREATE TABLE Hardware (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(1500) NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_ID = const IntPersistable (),
     PERSISTABLE_NAME = const StringPersistable (),
     PERSISTABLE_PRODUCTOR = const StringPersistable (max: 1500);

@@ -100,7 +100,7 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     }
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
-    return '${query.toString().substring(0, query.length - 2)} FROM Gpu WHERE Gpu.id = ${gpu.id} LIMIT 1;';
+    return "${query.toString().substring(0, query.length - 2)} FROM Gpu WHERE Gpu.id = ${gpu.id} LIMIT 1;";
   }
   
   String selectAll (List<Gpu> gpus, [List<String> fields]) {
@@ -114,7 +114,7 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Gpu WHERE Gpu.id IN (');
-    gpus.forEach((gpu) => query.write("'${gpu.id}', "));
+    gpus.forEach((gpu) => query.write("${gpu.id}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${gpus.length};';
   }
   
@@ -133,8 +133,8 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
         gpu.memorySize = value;
         break;
       default:
-          throw new ArgumentError('Invalid field $field');
-          break;
+        throw new ArgumentError('Invalid field $field');
+        break;
     }
   }
   
@@ -148,8 +148,10 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     StringBuffer query = new StringBuffer('UPDATE Gpu SET ');
     fields.forEach((f) {
       var value = get(gpu, f);
-      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
-        : value}', ");
+      if (value is Entity) {
+        value = value.entityMetadata.get(value, value.entityMetadata.idName);
+      }
+      query.write("$f = ${value is num ? value : value.toString()}, ");
     });
     return "${query.toString().substring(0, query.length - 2)} WHERE Gpu.$idName = '${get(gpu, idName)}';";
   }

@@ -174,8 +174,10 @@ class StringPersistable extends Persistable<String> {
  * Provides an implementation for objects that implement [Comparable]
  */
 class Id<T> extends Persistable<T> {
-  const Id({String name: null, num max: null, num min: null, 
-    String sqlType}) :
+  final bool autoIncrement;
+  
+  const Id({bool this.autoIncrement: false, String name: null, num max: null, 
+    num min: null, String sqlType}) :
     super (name: name, max: max, min: min, nullable: false,
         sqlType: sqlType, unique: true);
 }
@@ -185,8 +187,10 @@ class Id<T> extends Persistable<T> {
  */
 class IntId extends Id<int> {
   
-  const IntId ({String name, num max, num min, String sqlType}) :
-    super (name: name, max: max, min: min, sqlType: sqlType);
+  const IntId ({bool autoIncrement, String name, num max, num min, 
+    String sqlType})
+    : super (autoIncrement: autoIncrement, name: name, max: max, min: min, 
+        sqlType: sqlType);
   
   bool validate (int value) {
     if (value == null) {
@@ -211,8 +215,10 @@ class IntId extends Id<int> {
  */
 class NumId extends Id<num> {
   
-  const NumId ({String name, num max, num min, String sqlType}) :
-    super (name: name, max: max, min: min, sqlType: sqlType);
+  const NumId ({bool autoIncrement, String name, num max, num min,
+    String sqlType}) 
+    : super (autoIncrement: autoIncrement, name: name, max: max, min: min, 
+        sqlType: sqlType);
   
   bool validate (int value) {
     if (value == null) {
@@ -238,9 +244,11 @@ class NumId extends Id<num> {
 class StringId extends Id<String> implements StringPersistable {
   final String _match;
   
-  const StringId ({String name, num max, num min, String match, String sqlType}) 
-  : _match = match,
-    super (name: name, max: max, min: min, sqlType: sqlType);
+  const StringId ({bool autoIncrement, String name, num max, num min, 
+    String match, String sqlType}) 
+    : _match = match,
+    super (autoIncrement: autoIncrement, name: name, max: max, min: min, 
+        sqlType: sqlType);
   
   String get match => _match;
   

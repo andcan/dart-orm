@@ -105,9 +105,9 @@ class HardwareMeta extends EntityMeta<Hardware> {
     var name = hardware.name;
     var productor = hardware.productor;
     return 'INSERT${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${id is! Entity ? '${id}'
-    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${name is! Entity ? '${name}'
-    : '${name.entityMetadata.get(name, name.entityMetadata.idName)}'}, ${productor is! Entity ? '${productor}'
-    : '${productor.entityMetadata.get(productor, productor.entityMetadata.idName)}'});';
+    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${name is! Entity ? "'${name}'"
+    : "'${name.entityMetadata.get(name, name.entityMetadata.idName)}'"}, ${productor is! Entity ? "'${productor}'"
+    : "'${productor.entityMetadata.get(productor, productor.entityMetadata.idName)}'"});';
   }
   
   String select (Hardware hardware, [List<String> fields]) {
@@ -118,7 +118,7 @@ class HardwareMeta extends EntityMeta<Hardware> {
     }
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
-    return '${query.toString().substring(0, query.length - 2)} FROM Hardware WHERE Hardware.id = ${hardware.id} LIMIT 1;';
+    return "${query.toString().substring(0, query.length - 2)} FROM Hardware WHERE Hardware.id = ${hardware.id} LIMIT 1;";
   }
   
   String selectAll (List<Hardware> hardwares, [List<String> fields]) {
@@ -132,7 +132,7 @@ class HardwareMeta extends EntityMeta<Hardware> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Hardware WHERE Hardware.id IN (');
-    hardwares.forEach((hardware) => query.write("'${hardware.id}', "));
+    hardwares.forEach((hardware) => query.write("${hardware.id}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${hardwares.length};';
   }
   
@@ -148,8 +148,8 @@ class HardwareMeta extends EntityMeta<Hardware> {
         hardware.productor = value;
         break;
       default:
-          throw new ArgumentError('Invalid field $field');
-          break;
+        throw new ArgumentError('Invalid field $field');
+        break;
     }
   }
   
@@ -163,8 +163,10 @@ class HardwareMeta extends EntityMeta<Hardware> {
     StringBuffer query = new StringBuffer('UPDATE Hardware SET ');
     fields.forEach((f) {
       var value = get(hardware, f);
-      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
-        : value}', ");
+      if (value is Entity) {
+        value = value.entityMetadata.get(value, value.entityMetadata.idName);
+      }
+      query.write("$f = ${value is num ? value : value.toString()}, ");
     });
     return "${query.toString().substring(0, query.length - 2)} WHERE Hardware.$idName = '${get(hardware, idName)}';";
   }

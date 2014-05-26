@@ -146,10 +146,10 @@ class OrderMeta extends EntityMeta<Order> {
     var second = order.second;
     var total = order.total;
     return 'INSERT${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${id is! Entity ? '${id}'
-    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${first is! Entity ? '${first}'
-    : '${first.entityMetadata.get(first, first.entityMetadata.idName)}'}, ${price is! Entity ? '${price}'
-    : '${price.entityMetadata.get(price, price.entityMetadata.idName)}'}, ${second is! Entity ? '${second}'
-    : '${second.entityMetadata.get(second, second.entityMetadata.idName)}'}, ${total is! Entity ? '${total}'
+    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${first is! Entity ? "'${first}'"
+    : "'${first.entityMetadata.get(first, first.entityMetadata.idName)}'"}, ${price is! Entity ? '${price}'
+    : '${price.entityMetadata.get(price, price.entityMetadata.idName)}'}, ${second is! Entity ? "'${second}'"
+    : "'${second.entityMetadata.get(second, second.entityMetadata.idName)}'"}, ${total is! Entity ? '${total}'
     : '${total.entityMetadata.get(total, total.entityMetadata.idName)}'});';
   }
   
@@ -161,7 +161,7 @@ class OrderMeta extends EntityMeta<Order> {
     }
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
-    return '${query.toString().substring(0, query.length - 2)} FROM Order WHERE Order.id = ${order.id} LIMIT 1;';
+    return "${query.toString().substring(0, query.length - 2)} FROM Order WHERE Order.id = ${order.id} LIMIT 1;";
   }
   
   String selectAll (List<Order> orders, [List<String> fields]) {
@@ -175,7 +175,7 @@ class OrderMeta extends EntityMeta<Order> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Order WHERE Order.id IN (');
-    orders.forEach((order) => query.write("'${order.id}', "));
+    orders.forEach((order) => query.write("${order.id}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${orders.length};';
   }
   
@@ -197,8 +197,8 @@ class OrderMeta extends EntityMeta<Order> {
         order.total = value;
         break;
       default:
-          throw new ArgumentError('Invalid field $field');
-          break;
+        throw new ArgumentError('Invalid field $field');
+        break;
     }
   }
   
@@ -212,8 +212,10 @@ class OrderMeta extends EntityMeta<Order> {
     StringBuffer query = new StringBuffer('UPDATE Order SET ');
     fields.forEach((f) {
       var value = get(order, f);
-      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
-        : value}', ");
+      if (value is Entity) {
+        value = value.entityMetadata.get(value, value.entityMetadata.idName);
+      }
+      query.write("$f = ${value is num ? value : value.toString()}, ");
     });
     return "${query.toString().substring(0, query.length - 2)} WHERE Order.$idName = '${get(order, idName)}';";
   }

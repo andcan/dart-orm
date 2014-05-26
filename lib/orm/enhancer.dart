@@ -219,7 +219,9 @@ class EnhancerEntity {
         ..clear()
         ..write(tmp);
     members.forEach((member) {
-      _buffer.write("\${${member.vdname} is! Entity ? '\${${member.vdname}}'\n    : '\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'}, ");
+      _buffer.write(_requiresQuotes(member.typeName) ? 
+          "\${${member.vdname} is! Entity ? \"'\${${member.vdname}}'\"\n    : \"'\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'\"}, "
+          : "\${${member.vdname} is! Entity ? '\${${member.vdname}}'\n    : '\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'}, ");
     });
     return "${_buffer.toString().substring(0, _buffer.length - 2)});';\n  }";
   }
@@ -261,7 +263,7 @@ class EnhancerEntity {
     }
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('\$field, '));
-    return '\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} = \${$entityNamelc.${identifier.vdname}} LIMIT 1;';
+    return "\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} = ${_requiresQuotes(identifier.typeName) ? "'\${$entityNamelc.${identifier.vdname}}'" : '\${$entityNamelc.${identifier.vdname}}'} LIMIT 1;";
   }''';
   
   String _selectAll() => '''String selectAll (List<$entityName> ${entityNamelc}s, [List<String> fields]) {
@@ -275,7 +277,7 @@ class EnhancerEntity {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('\$field, '));
     query = new StringBuffer('\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} IN (');
-    ${entityNamelc}s.forEach(($entityNamelc) => query.write("'\${$entityNamelc.${identifier.vdname}}', "));
+    ${entityNamelc}s.forEach(($entityNamelc) => query.write("${_requiresQuotes(identifier.typeName) ? "'\${$entityNamelc.${identifier.vdname}}'" : '\${$entityNamelc.${identifier.vdname}}'}, "));
     return '\${query.toString().substring(0, query.length - 2)}) LIMIT \${${entityNamelc}s.length};';
   }''';
   
@@ -316,6 +318,20 @@ class EnhancerEntity {
     return '${_buffer.toString().substring(0, _buffer.length - 3)}';
   }
   
+  bool _requiresQuotes(String type) {
+    switch (type) {
+      case 'double':
+      case 'float':
+      case 'int':
+      case 'num':
+        return false;
+        break;
+      default:
+        return true;
+        break;
+    }
+  }
+  
   String _sql () {
     _buffer
         ..clear()
@@ -331,6 +347,8 @@ class EnhancerEntity {
   String _sqlTypeForMember (Member member) {
     Map<String, String> args = _annotationArguments(member.annotation);
     switch (member.typeName) {
+      case 'float':
+        return 'FLOAT';
       case 'int':
         return 'INT';
         break;
@@ -368,8 +386,10 @@ class EnhancerEntity {
     StringBuffer query = new StringBuffer('UPDATE $entityName SET ');
     fields.forEach((f) {
       var value = get($entityNamelc, f);
-      query.write("\$f = '\${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
-        : value}', ");
+      if (value is Entity) {
+        value = value.entityMetadata.get(value, value.entityMetadata.idName);
+      }
+      query.write("\$f = \${value is num ? value : value.toString()}, ");
     });
     return "\${query.toString().substring(0, query.length - 2)} WHERE $entityName.\$idName = '\${get($entityNamelc, idName)}';";
   }''';

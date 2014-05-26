@@ -85,8 +85,8 @@ class CoinMeta extends EntityMeta<Coin> {
     var marketId = coin.marketId;
     var name = coin.name;
     return 'INSERT${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${marketId is! Entity ? '${marketId}'
-    : '${marketId.entityMetadata.get(marketId, marketId.entityMetadata.idName)}'}, ${name is! Entity ? '${name}'
-    : '${name.entityMetadata.get(name, name.entityMetadata.idName)}'});';
+    : '${marketId.entityMetadata.get(marketId, marketId.entityMetadata.idName)}'}, ${name is! Entity ? "'${name}'"
+    : "'${name.entityMetadata.get(name, name.entityMetadata.idName)}'"});';
   }
   
   String select (Coin coin, [List<String> fields]) {
@@ -97,7 +97,7 @@ class CoinMeta extends EntityMeta<Coin> {
     }
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
-    return '${query.toString().substring(0, query.length - 2)} FROM Coin WHERE Coin.marketId = ${coin.marketId} LIMIT 1;';
+    return "${query.toString().substring(0, query.length - 2)} FROM Coin WHERE Coin.marketId = ${coin.marketId} LIMIT 1;";
   }
   
   String selectAll (List<Coin> coins, [List<String> fields]) {
@@ -111,7 +111,7 @@ class CoinMeta extends EntityMeta<Coin> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Coin WHERE Coin.marketId IN (');
-    coins.forEach((coin) => query.write("'${coin.marketId}', "));
+    coins.forEach((coin) => query.write("${coin.marketId}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${coins.length};';
   }
   
@@ -124,8 +124,8 @@ class CoinMeta extends EntityMeta<Coin> {
         coin.name = value;
         break;
       default:
-          throw new ArgumentError('Invalid field $field');
-          break;
+        throw new ArgumentError('Invalid field $field');
+        break;
     }
   }
   
@@ -139,8 +139,10 @@ class CoinMeta extends EntityMeta<Coin> {
     StringBuffer query = new StringBuffer('UPDATE Coin SET ');
     fields.forEach((f) {
       var value = get(coin, f);
-      query.write("$f = '${value is Entity ? value.entityMetadata.get(value, value.entityMetadata.idName) 
-        : value}', ");
+      if (value is Entity) {
+        value = value.entityMetadata.get(value, value.entityMetadata.idName);
+      }
+      query.write("$f = ${value is num ? value : value.toString()}, ");
     });
     return "${query.toString().substring(0, query.length - 2)} WHERE Coin.$idName = '${get(coin, idName)}';";
   }

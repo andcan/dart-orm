@@ -24,11 +24,21 @@ class Hardware extends Entity {
   String get name => _name;
   String get productor => _productor;
   HardwareMeta get entityMetadata => _meta;
+
+  int get hashCode {
+    int hash = 1;
+    hash = 31 * hash + id.hashCode;
+    hash = 31 * hash + name.hashCode;
+    hash = 31 * hash + productor.hashCode;
+  return hash;
+  }
   
   set id (int id) {
     if (HardwareMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
-      _meta.onChange(this, HardwareMeta.FIELD_ID);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, HardwareMeta.FIELD_ID);
+      }
     } else {
       throw new ArgumentError ('id is not valid');
     }
@@ -36,7 +46,9 @@ class Hardware extends Entity {
   set name (String name) {
     if (HardwareMeta.PERSISTABLE_NAME.validate(name)) {
       _name = name;
-      _meta.onChange(this, HardwareMeta.FIELD_NAME);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, HardwareMeta.FIELD_NAME);
+      }
     } else {
       throw new ArgumentError ('name is not valid');
     }
@@ -44,7 +56,9 @@ class Hardware extends Entity {
   set productor (String productor) {
     if (HardwareMeta.PERSISTABLE_PRODUCTOR.validate(productor)) {
       _productor = productor;
-      _meta.onChange(this, HardwareMeta.FIELD_PRODUCTOR);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, HardwareMeta.FIELD_PRODUCTOR);
+      }
     } else {
       throw new ArgumentError ('productor is not valid');
     }
@@ -87,27 +101,30 @@ class HardwareMeta extends EntityMeta<Hardware> {
     switch (field) {
       case 'id':
         return hardware.id;
-        break;
       case 'name':
         return hardware.name;
-        break;
       case 'productor':
         return hardware.productor;
-        break;
       default:
         throw new ArgumentError('Invalid field $field');
         break;
     }
   }
   
-  String insert (Hardware hardware, {bool ignore: false}) {
+  String insert (Hardware hardware, {bool ignore: false}) {    
     var id = hardware.id;
+    if (id is Entity) {
+      id = id.entityMetadata.get(id, id.entityMetadata.idName);
+    }    
     var name = hardware.name;
+    if (name is Entity) {
+      name = name.entityMetadata.get(name, name.entityMetadata.idName);
+    }    
     var productor = hardware.productor;
-    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${id is! Entity ? '${id}'
-    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${name is! Entity ? "'${name}'"
-    : "'${name.entityMetadata.get(name, name.entityMetadata.idName)}'"}, ${productor is! Entity ? "'${productor}'"
-    : "'${productor.entityMetadata.get(productor, productor.entityMetadata.idName)}'"});';
+    if (productor is Entity) {
+      productor = productor.entityMetadata.get(productor, productor.entityMetadata.idName);
+    }
+    return "INSERT${ignore ? 'ignore ' : ' '}INTO Hardware (id, name, productor) VALUES (${id is num ? '${id}' : "'${id}'"}, ${name is num ? '${name}' : "'${name}'"}, ${productor is num ? '${productor}' : "'${productor}'"});";
   }
   
   String select (Hardware hardware, [List<String> fields]) {
@@ -132,7 +149,7 @@ class HardwareMeta extends EntityMeta<Hardware> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Hardware WHERE Hardware.id IN (');
-    hardwares.forEach((hardware) => query.write("${hardware.id}, "));
+    hardwares.forEach((hardware) => query.write("${hardware.id is num ? hardware.id : "'${hardware.id}'"}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${hardwares.length};';
   }
   
@@ -166,9 +183,10 @@ class HardwareMeta extends EntityMeta<Hardware> {
       if (value is Entity) {
         value = value.entityMetadata.get(value, value.entityMetadata.idName);
       }
-      query.write("$f = ${value is num ? value : value.toString()}, ");
+      query.write('$f = ${value is num ? value : "'$value'"}, ');
     });
-    return "${query.toString().substring(0, query.length - 2)} WHERE Hardware.$idName = '${get(hardware, idName)}';";
+    var id = get(hardware, idName);
+    return "${query.toString().substring(0, query.length - 2)} WHERE Hardware.$idName = ${id is num ? id : "'$id'"};";
   }
   
   static const String ENTITY_NAME = 'Hardware';

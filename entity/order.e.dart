@@ -35,11 +35,23 @@ class Order extends Entity {
   Coin get second => _second;
   double get total => _total;
   OrderMeta get entityMetadata => _meta;
+
+  int get hashCode {
+    int hash = 1;
+    hash = 31 * hash + id.hashCode;
+    hash = 31 * hash + first.hashCode;
+    hash = 31 * hash + price.hashCode;
+    hash = 31 * hash + second.hashCode;
+    hash = 31 * hash + total.hashCode;
+  return hash;
+  }
   
   set id (int id) {
     if (OrderMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
-      _meta.onChange(this, OrderMeta.FIELD_ID);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, OrderMeta.FIELD_ID);
+      }
     } else {
       throw new ArgumentError ('id is not valid');
     }
@@ -47,7 +59,9 @@ class Order extends Entity {
   set first (Coin first) {
     if (OrderMeta.PERSISTABLE_FIRST.validate(first)) {
       _first = first;
-      _meta.onChange(this, OrderMeta.FIELD_FIRST);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, OrderMeta.FIELD_FIRST);
+      }
     } else {
       throw new ArgumentError ('first is not valid');
     }
@@ -55,7 +69,9 @@ class Order extends Entity {
   set price (double price) {
     if (OrderMeta.PERSISTABLE_PRICE.validate(price)) {
       _price = price;
-      _meta.onChange(this, OrderMeta.FIELD_PRICE);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, OrderMeta.FIELD_PRICE);
+      }
     } else {
       throw new ArgumentError ('price is not valid');
     }
@@ -63,7 +79,9 @@ class Order extends Entity {
   set second (Coin second) {
     if (OrderMeta.PERSISTABLE_SECOND.validate(second)) {
       _second = second;
-      _meta.onChange(this, OrderMeta.FIELD_SECOND);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, OrderMeta.FIELD_SECOND);
+      }
     } else {
       throw new ArgumentError ('second is not valid');
     }
@@ -71,7 +89,9 @@ class Order extends Entity {
   set total (double total) {
     if (OrderMeta.PERSISTABLE_TOTAL.validate(total)) {
       _total = total;
-      _meta.onChange(this, OrderMeta.FIELD_TOTAL);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, OrderMeta.FIELD_TOTAL);
+      }
     } else {
       throw new ArgumentError ('total is not valid');
     }
@@ -120,37 +140,42 @@ class OrderMeta extends EntityMeta<Order> {
     switch (field) {
       case 'id':
         return order.id;
-        break;
       case 'first':
         return order.first;
-        break;
       case 'price':
         return order.price;
-        break;
       case 'second':
         return order.second;
-        break;
       case 'total':
         return order.total;
-        break;
       default:
         throw new ArgumentError('Invalid field $field');
         break;
     }
   }
   
-  String insert (Order order, {bool ignore: false}) {
+  String insert (Order order, {bool ignore: false}) {    
     var id = order.id;
+    if (id is Entity) {
+      id = id.entityMetadata.get(id, id.entityMetadata.idName);
+    }    
     var first = order.first;
+    if (first is Entity) {
+      first = first.entityMetadata.get(first, first.entityMetadata.idName);
+    }    
     var price = order.price;
+    if (price is Entity) {
+      price = price.entityMetadata.get(price, price.entityMetadata.idName);
+    }    
     var second = order.second;
+    if (second is Entity) {
+      second = second.entityMetadata.get(second, second.entityMetadata.idName);
+    }    
     var total = order.total;
-    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${id is! Entity ? '${id}'
-    : '${id.entityMetadata.get(id, id.entityMetadata.idName)}'}, ${first is! Entity ? "'${first}'"
-    : "'${first.entityMetadata.get(first, first.entityMetadata.idName)}'"}, ${price is! Entity ? '${price}'
-    : '${price.entityMetadata.get(price, price.entityMetadata.idName)}'}, ${second is! Entity ? "'${second}'"
-    : "'${second.entityMetadata.get(second, second.entityMetadata.idName)}'"}, ${total is! Entity ? '${total}'
-    : '${total.entityMetadata.get(total, total.entityMetadata.idName)}'});';
+    if (total is Entity) {
+      total = total.entityMetadata.get(total, total.entityMetadata.idName);
+    }
+    return "INSERT${ignore ? 'ignore ' : ' '}INTO Order (id, first, price, second, total) VALUES (${id is num ? '${id}' : "'${id}'"}, ${first is num ? '${first}' : "'${first}'"}, ${price is num ? '${price}' : "'${price}'"}, ${second is num ? '${second}' : "'${second}'"}, ${total is num ? '${total}' : "'${total}'"});";
   }
   
   String select (Order order, [List<String> fields]) {
@@ -175,7 +200,7 @@ class OrderMeta extends EntityMeta<Order> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Order WHERE Order.id IN (');
-    orders.forEach((order) => query.write("${order.id}, "));
+    orders.forEach((order) => query.write("${order.id is num ? order.id : "'${order.id}'"}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${orders.length};';
   }
   
@@ -215,9 +240,10 @@ class OrderMeta extends EntityMeta<Order> {
       if (value is Entity) {
         value = value.entityMetadata.get(value, value.entityMetadata.idName);
       }
-      query.write("$f = ${value is num ? value : value.toString()}, ");
+      query.write('$f = ${value is num ? value : "'$value'"}, ');
     });
-    return "${query.toString().substring(0, query.length - 2)} WHERE Order.$idName = '${get(order, idName)}';";
+    var id = get(order, idName);
+    return "${query.toString().substring(0, query.length - 2)} WHERE Order.$idName = ${id is num ? id : "'$id'"};";
   }
   
   static const String ENTITY_NAME = 'Order';

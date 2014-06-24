@@ -23,11 +23,19 @@ class Gpu extends Hardware {
   
   int get memorySize => _memorySize;
   GpuMeta get entityMetadata => _meta;
+
+  int get hashCode {
+    int hash = 1;
+    hash = 31 * hash + memorySize.hashCode;
+  return hash;
+  }
   
   set memorySize (int memorySize) {
     if (GpuMeta.PERSISTABLE_MEMORYSIZE.validate(memorySize)) {
       _memorySize = memorySize;
-      _meta.onChange(this, GpuMeta.FIELD_MEMORYSIZE);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, GpuMeta.FIELD_MEMORYSIZE);
+      }
     } else {
       throw new ArgumentError ('memorySize is not valid');
     }
@@ -70,26 +78,24 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     switch (field) {
       case 'id':
         return gpu.id;
-        break;
       case 'name':
         return gpu.name;
-        break;
       case 'productor':
         return gpu.productor;
-        break;
       case 'memorySize':
         return gpu.memorySize;
-        break;
       default:
         throw new ArgumentError('Invalid field $field');
         break;
     }
   }
   
-  String insert (Gpu gpu, {bool ignore: false}) {
+  String insert (Gpu gpu, {bool ignore: false}) {    
     var memorySize = gpu.memorySize;
-    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES (${memorySize is! Entity ? '${memorySize}'
-    : '${memorySize.entityMetadata.get(memorySize, memorySize.entityMetadata.idName)}'});';
+    if (memorySize is Entity) {
+      memorySize = memorySize.entityMetadata.get(memorySize, memorySize.entityMetadata.idName);
+    }
+    return "INSERT${ignore ? 'ignore ' : ' '}INTO Gpu (memorySize) VALUES (${memorySize is num ? '${memorySize}' : "'${memorySize}'"});";
   }
   
   String select (Gpu gpu, [List<String> fields]) {
@@ -114,7 +120,7 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Gpu WHERE Gpu.id IN (');
-    gpus.forEach((gpu) => query.write("${gpu.id}, "));
+    gpus.forEach((gpu) => query.write("${gpu.id is num ? gpu.id : "'${gpu.id}'"}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${gpus.length};';
   }
   
@@ -151,9 +157,10 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
       if (value is Entity) {
         value = value.entityMetadata.get(value, value.entityMetadata.idName);
       }
-      query.write("$f = ${value is num ? value : value.toString()}, ");
+      query.write('$f = ${value is num ? value : "'$value'"}, ');
     });
-    return "${query.toString().substring(0, query.length - 2)} WHERE Gpu.$idName = '${get(gpu, idName)}';";
+    var id = get(gpu, idName);
+    return "${query.toString().substring(0, query.length - 2)} WHERE Gpu.$idName = ${id is num ? id : "'$id'"};";
   }
   
   static const String ENTITY_NAME = 'Gpu';

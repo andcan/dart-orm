@@ -58,6 +58,14 @@ abstract class EntityMeta<E extends Entity> {
   
   String delete (E entity);
   
+  void enableSync(E e) {
+    e._sync = true;
+  }
+  
+  void disableSync(E e) {
+    e._sync = false;
+  }
+  
   Object get (E entity, String field);
   
   String insert (E entity, {bool ignore: false});
@@ -86,11 +94,14 @@ abstract class EntityMeta<E extends Entity> {
   
   String selectAll (List<E> entities, [List<String> fields]);
   
+  bool syncEnabled (E e) => e._sync; 
+  
   String update (E entity, List values, [List<String> fields]);
   
   static EntityMeta of (Entity e) => e.entityMetadata;
 }
 
 abstract class Entity<T> {
+  bool _sync = true;
   EntityMeta get entityMetadata;
 }

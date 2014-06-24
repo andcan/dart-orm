@@ -19,11 +19,20 @@ class Coin extends Entity {
   int get marketId => _marketId;
   String get name => _name;
   CoinMeta get entityMetadata => _meta;
+
+  int get hashCode {
+    int hash = 1;
+    hash = 31 * hash + marketId.hashCode;
+    hash = 31 * hash + name.hashCode;
+  return hash;
+  }
   
   set marketId (int marketId) {
     if (CoinMeta.PERSISTABLE_MARKETID.validate(marketId)) {
       _marketId = marketId;
-      _meta.onChange(this, CoinMeta.FIELD_MARKETID);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, CoinMeta.FIELD_MARKETID);
+      }
     } else {
       throw new ArgumentError ('marketId is not valid');
     }
@@ -31,7 +40,9 @@ class Coin extends Entity {
   set name (String name) {
     if (CoinMeta.PERSISTABLE_NAME.validate(name)) {
       _name = name;
-      _meta.onChange(this, CoinMeta.FIELD_NAME);
+      if (!entityMetadata.syncDisabled(this)) {
+        _meta.onChange(this, CoinMeta.FIELD_NAME);
+      }
     } else {
       throw new ArgumentError ('name is not valid');
     }
@@ -71,22 +82,24 @@ class CoinMeta extends EntityMeta<Coin> {
     switch (field) {
       case 'marketId':
         return coin.marketId;
-        break;
       case 'name':
         return coin.name;
-        break;
       default:
         throw new ArgumentError('Invalid field $field');
         break;
     }
   }
   
-  String insert (Coin coin, {bool ignore: false}) {
+  String insert (Coin coin, {bool ignore: false}) {    
     var marketId = coin.marketId;
+    if (marketId is Entity) {
+      marketId = marketId.entityMetadata.get(marketId, marketId.entityMetadata.idName);
+    }    
     var name = coin.name;
-    return 'INSERT${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${marketId is! Entity ? '${marketId}'
-    : '${marketId.entityMetadata.get(marketId, marketId.entityMetadata.idName)}'}, ${name is! Entity ? "'${name}'"
-    : "'${name.entityMetadata.get(name, name.entityMetadata.idName)}'"});';
+    if (name is Entity) {
+      name = name.entityMetadata.get(name, name.entityMetadata.idName);
+    }
+    return "INSERT${ignore ? 'ignore ' : ' '}INTO Coin (marketId, name) VALUES (${marketId is num ? '${marketId}' : "'${marketId}'"}, ${name is num ? '${name}' : "'${name}'"});";
   }
   
   String select (Coin coin, [List<String> fields]) {
@@ -111,7 +124,7 @@ class CoinMeta extends EntityMeta<Coin> {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('$field, '));
     query = new StringBuffer('${query.toString().substring(0, query.length - 2)} FROM Coin WHERE Coin.marketId IN (');
-    coins.forEach((coin) => query.write("${coin.marketId}, "));
+    coins.forEach((coin) => query.write("${coin.marketId is num ? coin.marketId : "'${coin.marketId}'"}, "));
     return '${query.toString().substring(0, query.length - 2)}) LIMIT ${coins.length};';
   }
   
@@ -142,9 +155,10 @@ class CoinMeta extends EntityMeta<Coin> {
       if (value is Entity) {
         value = value.entityMetadata.get(value, value.entityMetadata.idName);
       }
-      query.write("$f = ${value is num ? value : value.toString()}, ");
+      query.write('$f = ${value is num ? value : "'$value'"}, ');
     });
-    return "${query.toString().substring(0, query.length - 2)} WHERE Coin.$idName = '${get(coin, idName)}';";
+    var id = get(coin, idName);
+    return "${query.toString().substring(0, query.length - 2)} WHERE Coin.$idName = ${id is num ? id : "'$id'"};";
   }
   
   static const String ENTITY_NAME = 'Coin';

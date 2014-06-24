@@ -68,8 +68,10 @@ class IntPersistable extends Persistable<int> {
         return false;
       }
     }
-    if (length > value.toString().length) {
-      return false;
+    if (null != length) {
+      if (length < value.toString().length) {
+        return false;
+      }
     }
     return true;
   }

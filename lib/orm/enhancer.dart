@@ -174,7 +174,7 @@ class EnhancerEntity {
       ms.addAll(superclass.members);
     }
     ms.addAll(members);
-    ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        return $entityNamelc.${member.vdname};\n        break;\n"));
+    ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        return $entityNamelc.${member.vdname};\n"));
     return '''$_buffer      default:
         throw new ArgumentError('Invalid field \$field');
         break;
@@ -186,6 +186,15 @@ class EnhancerEntity {
     _buffer.clear();
     members.forEach((member) => _buffer.write('${member.asGetter()}\n  '));
     return '${_buffer.toString().substring(0, _buffer.length - 3)}';
+  }
+  
+  String _hashCode () {
+    _buffer
+        ..clear()
+        ..write('''int get hashCode {
+    int hash = 1;''');
+    members.forEach((member) => _buffer.write('\n    hash = 31 * hash + ${member.vdname}.hashCode;'));
+    return '${_buffer.toString()}\n  return hash;\n  }';
   }
   
   String _imports () {
@@ -211,19 +220,22 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('String insert ($entityName $entityNamelc, {bool ignore: false}) {');
-    members.forEach((member) => _buffer.write('\n    var ${member.vdname} = $entityNamelc.${member.vdname};'));
-    _buffer.write("\n    return 'INSERT\${ignore ? \'ignore \' : \' \'}INTO $entityName (");
+    members.forEach((member) => _buffer.write('''
+    
+    var ${member.vdname} = $entityNamelc.${member.vdname};
+    if (${member.vdname} is Entity) {
+      ${member.vdname} = ${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName);
+    }'''));
+    _buffer.write("\n    return \"INSERT\${ignore ? \'ignore \' : \' \'}INTO $entityName (");
     members.forEach((member) => _buffer.write('${member.vdname}, '));
     String tmp = '${_buffer.toString().substring(0, _buffer.length - 2)}) VALUES (';
     _buffer
         ..clear()
         ..write(tmp);
     members.forEach((member) {
-      _buffer.write(_requiresQuotes(member.typeName) ? 
-          "\${${member.vdname} is! Entity ? \"'\${${member.vdname}}'\"\n    : \"'\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'\"}, "
-          : "\${${member.vdname} is! Entity ? '\${${member.vdname}}'\n    : '\${${member.vdname}.entityMetadata.get(${member.vdname}, ${member.vdname}.entityMetadata.idName)}'}, ");
+      _buffer.write("\${${member.vdname} is num ? '\${${member.vdname}}' : \"'\${${member.vdname}}'\"}, ");
     });
-    return "${_buffer.toString().substring(0, _buffer.length - 2)});';\n  }";
+    return "${_buffer.toString().substring(0, _buffer.length - 2)});\";\n  }";
   }
   
   String _persistables () {
@@ -277,7 +289,7 @@ class EnhancerEntity {
     StringBuffer query = new StringBuffer('SELECT ');
     fields.forEach((field) => query.write('\$field, '));
     query = new StringBuffer('\${query.toString().substring(0, query.length - 2)} FROM $entityName WHERE $entityName.${identifier.vdname} IN (');
-    ${entityNamelc}s.forEach(($entityNamelc) => query.write("${_requiresQuotes(identifier.typeName) ? "'\${$entityNamelc.${identifier.vdname}}'" : '\${$entityNamelc.${identifier.vdname}}'}, "));
+    ${entityNamelc}s.forEach(($entityNamelc) => query.write("${_requiresQuotes(identifier.typeName) ? "'\${$entityNamelc.${identifier.vdname}}'" : '\${$entityNamelc.${identifier.vdname} is num ? $entityNamelc.${identifier.vdname} : "\'\${$entityNamelc.${identifier.vdname}}\'"}'}, "));
     return '\${query.toString().substring(0, query.length - 2)}) LIMIT \${${entityNamelc}s.length};';
   }''';
   
@@ -325,10 +337,8 @@ class EnhancerEntity {
       case 'int':
       case 'num':
         return false;
-        break;
       default:
         return true;
-        break;
     }
   }
   
@@ -351,11 +361,9 @@ class EnhancerEntity {
         return 'FLOAT';
       case 'int':
         return 'INT';
-        break;
       case 'double':
       case 'num':
         return 'DOUBLE';
-        break;
       case 'String':
         if (args.containsKey('max')) {
           return 'VARCHAR(${args['max']})';
@@ -364,7 +372,6 @@ class EnhancerEntity {
           return 'VARCHAR(${args['length']})';
         }
         return 'VARCHAR(256)';
-        break;
       default:
         EnhancerEntity e = entities.firstWhere((test) =>
             test.entityName == member.typeName, orElse: () => null);
@@ -389,9 +396,10 @@ class EnhancerEntity {
       if (value is Entity) {
         value = value.entityMetadata.get(value, value.entityMetadata.idName);
       }
-      query.write("\$f = \${value is num ? value : value.toString()}, ");
+      query.write('\$f = \${value is num ? value : "'\$value'"}, ');
     });
-    return "\${query.toString().substring(0, query.length - 2)} WHERE $entityName.\$idName = '\${get($entityNamelc, idName)}';";
+    var id = get($entityNamelc, idName);
+    return "\${query.toString().substring(0, query.length - 2)} WHERE $entityName.\$idName = \${id is num ? id : "\'\$id\'"};";
   }''';
       
   String toString () => '''${_imports()}
@@ -402,6 +410,8 @@ ${isAbstract ? 'abstract ' : ''}class $entityName extends ${hasParent ? extendsC
   
   ${_getters()}
   $entityMetaName get entityMetadata => _meta;
+
+  ${_hashCode()}
   
   ${_setters()}
   
@@ -563,7 +573,9 @@ class Member {
   String asSetter () => '''set $vdname ($_type $vdname) {
     if ({{EntityMetaName}}.PERSISTABLE_$vdnameuc.validate($vdname)) {
       _$vdname = $vdname;
-      _meta.onChange(this, {{EntityMetaName}}.FIELD_$vdnameuc);
+      if (!entityMetadata.updating(this)) {
+        _meta.onChange(this, {{EntityMetaName}}.FIELD_$vdnameuc);
+      }
     } else {
       throw new ArgumentError ('$vdname is not valid');
     }

@@ -65,8 +65,8 @@ void main () {
   });*/
     ConnectionPool pool = new ConnectionPool(db: 'orm', host: '127.0.0.1', user: 'root', password: 'iU4hrS16f5.93');
     Orm orm = new Orm(new MySqlDataStore(pool));
-    Hardware h = new Hardware(name: 'test');
-    orm.persist(h);
-    h.productor = 'ciaofess';
+    Hardware h = new Hardware(id: 0);
+    orm.datastore.get(h);
+    h.productor = 'ciao';
     orm.datastore.close();
 }

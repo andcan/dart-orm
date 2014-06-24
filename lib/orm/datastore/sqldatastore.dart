@@ -39,6 +39,10 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
   Future<Optional<E>> get (E e, [List<Symbol> fields]) {
     Completer<Optional<E>> c = new Completer<Optional<E>> ();
     InstanceMirror mirror = reflect (e);
+    if (e.entityMetadata.changeStreamController.isAbsent) {
+      e.entityMetadata.changeStreamController = new Optional(_orm._onChange);
+    }
+    e._sync = true;
     
     pool.startTransaction(consistent: true).then((transaction) {
       transaction.prepareExecute(EntityMeta.of(e).select(e), []).then((Results results) {
@@ -60,6 +64,7 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
               mirror.setField(field, result[fs.indexOf(f)]);
             });
           }
+          e._sync = false;
           c.complete(new Optional<E>(e));
         }).catchError((e) => c.complete(new Optional<E>.absent()),
             test: (e) => e is StateError);
@@ -70,7 +75,7 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
   
   Future<List<Optional<E>>> _getAll (Iterable<E> es, EntityMeta meta, [List<String> fields]) {
     Completer<List<Optional<E>>> c = new Completer<List<Optional<E>>>();
-    String id = meta.id;
+    String id = meta.idName;
     List<Optional<E>> list = <Optional<E>>[];
     InstanceMirror mirror;
     if (null != fields) {
@@ -83,13 +88,13 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
         int length = es.length;
         List<Field> fs = results.fields;
         Field idField = fs.firstWhere((test) 
-            => test.name == meta.id, orElse: () => null);
+            => test.name == meta.idName, orElse: () => null);
         int idIndex = fs.indexOf(idField);
         results.toList().then((rs) {
           for (int i = 0; i < length; ++i) {
             E e = es.elementAt(i);
             mirror = reflect (e);
-            Row result = rs.firstWhere((test) => test[idField.name] == mirror.getField(meta.idSym));
+            Row result = rs.firstWhere((test) => test[idField.name] == mirror.getField(meta.idNameSym));
             if (null == result) {
               list.add(new Optional<E>.absent());
             } else {
@@ -152,7 +157,6 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
         transaction.rollback().then((_) 
             => c.completeError(e), onError: (e) => c.completeError(e));
       };
-      print (EntityMeta.of(e).insert(e));
       transaction.prepareExecute(EntityMeta.of(e).insert(e), []).then((results) {
         transaction.commit().then((_) => c.complete(results), onError: handleError);
       }, onError: handleError);
@@ -171,6 +175,7 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
         transaction.rollback().then((_) 
             => c.completeError(e), onError: (e) => c.completeError(e));
       };
+      print (EntityMeta.of(e).update(e, values, fields));
       transaction.prepareExecute(EntityMeta.of(e).update(e, values, fields), []).then((results) =>
               transaction.commit().then((_) => c.complete(results),
               onError: handleError), onError: handleError);

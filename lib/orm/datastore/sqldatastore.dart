@@ -36,35 +36,21 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
     return pool.prepareExecute(EntityMeta.of(e).delete(e), []);
   }
   
-  Future<Optional<E>> get (E e, [List<Symbol> fields]) {
+  Future<Optional<E>> get (E e) {
     Completer<Optional<E>> c = new Completer<Optional<E>> ();
-    InstanceMirror mirror = reflect (e);
+    EntityMeta meta = EntityMeta.of(e);
     if (e.entityMetadata.changeStreamController.isAbsent) {
       e.entityMetadata.changeStreamController = new Optional(_orm._onChange);
     }
-    e._sync = true;
-    
     pool.startTransaction(consistent: true).then((transaction) {
       transaction.prepareExecute(EntityMeta.of(e).select(e), []).then((Results results) {
         results.first.then((Row result) {
-          if (null == fields) {
-            int i = 0;
-            results.fields.forEach((field) {
-              mirror.setField(new Symbol ('${field.name}'), result[i]);
-              ++i;
-            });
-          } else {
-            List<Field> fs = results.fields;
-            fields.forEach((field) {
-              Field f = fs.firstWhere((test) 
-                  => test.name == MirrorSystem.getName(field), orElse: () => null);
-              if (null == f) {
-                throw new StateError('Field $field not found');
-              }
-              mirror.setField(field, result[fs.indexOf(f)]);
-            });
-          }
-          e._sync = false;
+          meta.disableSync(e);
+          int i = 0;
+          results.fields.forEach((field) {
+            meta.set(e, field.name, result[i++]);
+          });
+          meta.enableSync(e);
           c.complete(new Optional<E>(e));
         }).catchError((e) => c.complete(new Optional<E>.absent()),
             test: (e) => e is StateError);
@@ -161,24 +147,21 @@ class MySqlDataStore<E extends Entity> implements DataStore<E> {
         transaction.commit().then((_) => c.complete(results), onError: handleError);
       }, onError: handleError);
     });
-    
     return c.future;
   }
   
-  Future<Results> update (E e, List<String> fields) {
+  Future<Results> update (E e) {
     Completer<Results> c = new Completer<Results> ();
-    InstanceMirror mirror = reflect (e);
-    List values = [];
-    fields.forEach((field) => values.add(mirror.getField(symbol(field)).reflectee));
+    EntityMeta meta = EntityMeta.of(e);
+    List values = meta.asList(e);
     pool.startTransaction(consistent: true).then((transaction) {
       Function handleError = (e) {
         transaction.rollback().then((_) 
             => c.completeError(e), onError: (e) => c.completeError(e));
       };
-      print (EntityMeta.of(e).update(e, values, fields));
-      transaction.prepareExecute(EntityMeta.of(e).update(e, values, fields), []).then((results) =>
-              transaction.commit().then((_) => c.complete(results),
-              onError: handleError), onError: handleError);
+      transaction.prepareExecute(meta.update(e, values, meta.fields), [])
+        .then((results) => transaction.commit().then((_) => c.complete(results),
+          onError: handleError), onError: handleError);
     });
     return c.future;
   }

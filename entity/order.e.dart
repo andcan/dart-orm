@@ -43,13 +43,13 @@ class Order extends Entity {
     hash = 31 * hash + price.hashCode;
     hash = 31 * hash + second.hashCode;
     hash = 31 * hash + total.hashCode;
-  return hash;
+    return hash;
   }
   
   set id (int id) {
     if (OrderMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, OrderMeta.FIELD_ID);
       }
     } else {
@@ -59,7 +59,7 @@ class Order extends Entity {
   set first (Coin first) {
     if (OrderMeta.PERSISTABLE_FIRST.validate(first)) {
       _first = first;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, OrderMeta.FIELD_FIRST);
       }
     } else {
@@ -69,7 +69,7 @@ class Order extends Entity {
   set price (double price) {
     if (OrderMeta.PERSISTABLE_PRICE.validate(price)) {
       _price = price;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, OrderMeta.FIELD_PRICE);
       }
     } else {
@@ -79,7 +79,7 @@ class Order extends Entity {
   set second (Coin second) {
     if (OrderMeta.PERSISTABLE_SECOND.validate(second)) {
       _second = second;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, OrderMeta.FIELD_SECOND);
       }
     } else {
@@ -89,7 +89,7 @@ class Order extends Entity {
   set total (double total) {
     if (OrderMeta.PERSISTABLE_TOTAL.validate(total)) {
       _total = total;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, OrderMeta.FIELD_TOTAL);
       }
     } else {
@@ -109,6 +109,10 @@ class OrderMeta extends EntityMeta<Order> {
   String get entityName => ENTITY_NAME;
 
   Symbol get entityNameSym => ENTITY_NAME_SYM;
+
+  List<String> get fields => FIELDS;
+
+  List<Symbol> get fieldsSym => FIELDS_SYM;
 
   List asList (Order order) => [
     order.id,
@@ -259,6 +263,13 @@ class OrderMeta extends EntityMeta<Order> {
     FIELD_PRICE,
     FIELD_SECOND,
     FIELD_TOTAL
+  ];
+  static const List<Symbol> FIELDS_SYM = const <Symbol>[
+    SYMBOL_ID,
+    SYMBOL_FIRST,
+    SYMBOL_PRICE,
+    SYMBOL_SECOND,
+    SYMBOL_TOTAL
   ];
   static const String SQL_CREATE = 'CREATE TABLE Order (id INT NOT NULL, first INT NOT NULL, price DOUBLE NOT NULL, second INT NOT NULL, total DOUBLE NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_ID = const IntPersistable (),

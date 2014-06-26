@@ -165,6 +165,19 @@ class EnhancerEntity {
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
   }
   
+  String _fieldsListSym () {
+    _buffer
+        ..clear()
+        ..write('static const List<Symbol> FIELDS_SYM = const <Symbol>[');
+    if (hasParent) {
+      superclass.members.forEach((member) =>
+          _buffer.write("\n    ${superclass.entityMetaName}.SYMBOL_${member.vdnameuc},"));
+    }
+    members.forEach((member) =>
+        _buffer.write("\n    SYMBOL_${member.vdnameuc},"));
+    return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
+  }
+  
   String _get () {
     _buffer
         ..clear()
@@ -194,7 +207,7 @@ class EnhancerEntity {
         ..write('''int get hashCode {
     int hash = 1;''');
     members.forEach((member) => _buffer.write('\n    hash = 31 * hash + ${member.vdname}.hashCode;'));
-    return '${_buffer.toString()}\n  return hash;\n  }';
+    return '${_buffer.toString()}\n    return hash;\n  }';
   }
   
   String _imports () {
@@ -425,6 +438,10 @@ class $entityMetaName ${hasParent ? 'extends ${extendsClause.superclass}Meta imp
 
   Symbol get entityNameSym => ENTITY_NAME_SYM;
 
+  List<String> get fields => FIELDS;
+
+  List<Symbol> get fieldsSym => FIELDS_SYM;
+
   ${_asArray()}
 
   ${_asMap()}
@@ -449,6 +466,7 @@ class $entityMetaName ${hasParent ? 'extends ${extendsClause.superclass}Meta imp
   static const Symbol ENTITY_NAME_SYM = const Symbol ('$entityName');
   ${_fields()}
   ${_fieldsList()}
+  ${_fieldsListSym()}
   ${_sql()}
   ${_persistables()}
   ${_symbols()}
@@ -573,7 +591,7 @@ class Member {
   String asSetter () => '''set $vdname ($_type $vdname) {
     if ({{EntityMetaName}}.PERSISTABLE_$vdnameuc.validate($vdname)) {
       _$vdname = $vdname;
-      if (!entityMetadata.updating(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, {{EntityMetaName}}.FIELD_$vdnameuc);
       }
     } else {

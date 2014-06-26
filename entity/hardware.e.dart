@@ -30,13 +30,13 @@ class Hardware extends Entity {
     hash = 31 * hash + id.hashCode;
     hash = 31 * hash + name.hashCode;
     hash = 31 * hash + productor.hashCode;
-  return hash;
+    return hash;
   }
   
   set id (int id) {
     if (HardwareMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, HardwareMeta.FIELD_ID);
       }
     } else {
@@ -46,7 +46,7 @@ class Hardware extends Entity {
   set name (String name) {
     if (HardwareMeta.PERSISTABLE_NAME.validate(name)) {
       _name = name;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, HardwareMeta.FIELD_NAME);
       }
     } else {
@@ -56,7 +56,7 @@ class Hardware extends Entity {
   set productor (String productor) {
     if (HardwareMeta.PERSISTABLE_PRODUCTOR.validate(productor)) {
       _productor = productor;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, HardwareMeta.FIELD_PRODUCTOR);
       }
     } else {
@@ -76,6 +76,10 @@ class HardwareMeta extends EntityMeta<Hardware> {
   String get entityName => ENTITY_NAME;
 
   Symbol get entityNameSym => ENTITY_NAME_SYM;
+
+  List<String> get fields => FIELDS;
+
+  List<Symbol> get fieldsSym => FIELDS_SYM;
 
   List asList (Hardware hardware) => [
     hardware.id,
@@ -198,6 +202,11 @@ class HardwareMeta extends EntityMeta<Hardware> {
     FIELD_ID,
     FIELD_NAME,
     FIELD_PRODUCTOR
+  ];
+  static const List<Symbol> FIELDS_SYM = const <Symbol>[
+    SYMBOL_ID,
+    SYMBOL_NAME,
+    SYMBOL_PRODUCTOR
   ];
   static const String SQL_CREATE = 'CREATE TABLE Hardware (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(1500) NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_ID = const IntPersistable (),

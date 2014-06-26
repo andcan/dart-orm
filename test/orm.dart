@@ -1,5 +1,6 @@
 import '../entity/hardware.e.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,6 +11,7 @@ import 'package:html5lib/parser.dart';
 import 'package:orm/orm.dart';
 import 'package:sqljocky/sqljocky.dart';
 import 'package:unittest/unittest.dart';
+import 'package:utils/utils.dart';
 
 const String UNKNOWN = 'Unknown';
 
@@ -63,10 +65,33 @@ void main () {
       }
     });
   });*/
+  test ('orm', () {
     ConnectionPool pool = new ConnectionPool(db: 'orm', host: '127.0.0.1', user: 'root', password: 'iU4hrS16f5.93');
     Orm orm = new Orm(new MySqlDataStore(pool));
-    Hardware h = new Hardware(id: 0);
-    orm.datastore.get(h);
-    h.productor = 'ciao';
-    orm.datastore.close();
+    Hardware h = new Hardware(id: 1537, name: 'test', productor: 'test');
+    orm.datastore.get(h).then(expectAsync((Optional<Hardware> optional) {
+      expect(optional.isAbsent, isTrue);
+      expect(h.name, equals('test'));
+      expect(h.productor, equals('test'));
+      orm.persist(h).then(expectAsync((r) 
+          => expect(r.affectedRows, equals(1))))
+            .then(expectAsync((_) {
+              h.productor = 'test1';
+              new Future.delayed(new Duration (milliseconds: 2000))
+                .then(expectAsync((_) {
+                orm.datastore.get(h).then(expectAsync((Optional<Hardware> optional) {
+                  expect(optional.isAbsent, isFalse);
+                  expect(optional.value.name, equals('test'));
+                  expect(optional.value.productor, equals('test1'));
+                  orm.datastore.delete(h).then(expectAsync((r) 
+                      => expect(r.affectedRows, equals(1))))
+                    .then(expectAsync((_) {
+                      orm.datastore.close();
+                    }));
+                }));
+              }));
+      }));
+    }));
+  });
+    
 }

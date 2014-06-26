@@ -17,7 +17,6 @@
 library orm;
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:mirrors';
 
 import 'package:analyzer/analyzer.dart';
@@ -57,7 +56,7 @@ class Orm {
   
   void _listen (ContentChangeEvent e) {  
     e.sink();
-    datastore.update(e.entity, e.fields);
+    datastore.update(e.entity);
   }
   
   Future<Results> persist (Entity e) {

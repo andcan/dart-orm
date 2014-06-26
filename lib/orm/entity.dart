@@ -46,6 +46,10 @@ abstract class EntityMeta<E extends Entity> {
   
   Symbol get entityNameSym;
   
+  List<String> get fields;
+  
+  List<Symbol> get fieldsSym;
+  
   String get idName;
   
   Symbol get idNameSym;
@@ -58,12 +62,12 @@ abstract class EntityMeta<E extends Entity> {
   
   String delete (E entity);
   
-  void enableSync(E e) {
-    e._sync = true;
-  }
-  
   void disableSync(E e) {
     e._sync = false;
+  }
+  
+  void enableSync(E e) {
+    e._sync = true;
   }
   
   Object get (E entity, String field);
@@ -93,6 +97,8 @@ abstract class EntityMeta<E extends Entity> {
   String select (E entity, [List<String> fields]);
   
   String selectAll (List<E> entities, [List<String> fields]);
+  
+  void set(E entity, String field, value);
   
   bool syncEnabled (E e) => e._sync; 
   

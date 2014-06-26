@@ -27,13 +27,13 @@ class Gpu extends Hardware {
   int get hashCode {
     int hash = 1;
     hash = 31 * hash + memorySize.hashCode;
-  return hash;
+    return hash;
   }
   
   set memorySize (int memorySize) {
     if (GpuMeta.PERSISTABLE_MEMORYSIZE.validate(memorySize)) {
       _memorySize = memorySize;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, GpuMeta.FIELD_MEMORYSIZE);
       }
     } else {
@@ -50,6 +50,10 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
   String get entityName => ENTITY_NAME;
 
   Symbol get entityNameSym => ENTITY_NAME_SYM;
+
+  List<String> get fields => FIELDS;
+
+  List<Symbol> get fieldsSym => FIELDS_SYM;
 
   List asList (Gpu gpu) => [
     gpu.id,
@@ -171,6 +175,12 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
     HardwareMeta.FIELD_NAME,
     HardwareMeta.FIELD_PRODUCTOR,
     FIELD_MEMORYSIZE
+  ];
+  static const List<Symbol> FIELDS_SYM = const <Symbol>[
+    HardwareMeta.SYMBOL_ID,
+    HardwareMeta.SYMBOL_NAME,
+    HardwareMeta.SYMBOL_PRODUCTOR,
+    SYMBOL_MEMORYSIZE
   ];
   static const String SQL_CREATE = 'CREATE TABLE Gpu (id INT NOT NULL, name VARCHAR(256) NOT NULL, productor VARCHAR(1500) NOT NULL, memorySize INT NOT NULL, PRIMARY KEY(id));';
   static const Persistable PERSISTABLE_MEMORYSIZE = const IntPersistable (max: 100 * 1024 * 1024);

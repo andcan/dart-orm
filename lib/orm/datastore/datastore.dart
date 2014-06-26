@@ -76,5 +76,5 @@ abstract class DataStore<E extends Entity> {
   
   Future<Results> put (E e);
   
-  Future<Results> update (E e, List<String> symbols);
+  Future<Results> update (E e);
 }

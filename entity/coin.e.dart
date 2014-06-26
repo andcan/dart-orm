@@ -24,13 +24,13 @@ class Coin extends Entity {
     int hash = 1;
     hash = 31 * hash + marketId.hashCode;
     hash = 31 * hash + name.hashCode;
-  return hash;
+    return hash;
   }
   
   set marketId (int marketId) {
     if (CoinMeta.PERSISTABLE_MARKETID.validate(marketId)) {
       _marketId = marketId;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, CoinMeta.FIELD_MARKETID);
       }
     } else {
@@ -40,7 +40,7 @@ class Coin extends Entity {
   set name (String name) {
     if (CoinMeta.PERSISTABLE_NAME.validate(name)) {
       _name = name;
-      if (!entityMetadata.syncDisabled(this)) {
+      if (entityMetadata.syncEnabled(this)) {
         _meta.onChange(this, CoinMeta.FIELD_NAME);
       }
     } else {
@@ -60,6 +60,10 @@ class CoinMeta extends EntityMeta<Coin> {
   String get entityName => ENTITY_NAME;
 
   Symbol get entityNameSym => ENTITY_NAME_SYM;
+
+  List<String> get fields => FIELDS;
+
+  List<Symbol> get fieldsSym => FIELDS_SYM;
 
   List asList (Coin coin) => [
     coin.marketId,
@@ -168,6 +172,10 @@ class CoinMeta extends EntityMeta<Coin> {
   static const List<String> FIELDS = const <String>[
     FIELD_MARKETID,
     FIELD_NAME
+  ];
+  static const List<Symbol> FIELDS_SYM = const <Symbol>[
+    SYMBOL_MARKETID,
+    SYMBOL_NAME
   ];
   static const String SQL_CREATE = 'CREATE TABLE Coin (marketId INT NOT NULL, name VARCHAR(25) NOT NULL, PRIMARY KEY(marketId));';
   static const Persistable PERSISTABLE_MARKETID = const IntPersistable (max: 206),

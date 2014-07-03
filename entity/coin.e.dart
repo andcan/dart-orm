@@ -14,7 +14,7 @@ class Coin extends Entity {
 
   Coin.fromMapSym (Map<Symbol, dynamic> values)
   : this._marketId = values[CoinMeta.SYMBOL_MARKETID],
-    this._name = values[CoinMeta.SYMBOL_NAME];
+  this._name = values[CoinMeta.SYMBOL_NAME];
   
   int get marketId => _marketId;
   String get name => _name;
@@ -47,6 +47,11 @@ class Coin extends Entity {
       throw new ArgumentError ('name is not valid');
     }
   }
+  
+  String toString () => '''{
+    marketId: $marketId,
+    name: $name
+  }''';
   
   static final CoinMeta _meta = new CoinMeta();
 }

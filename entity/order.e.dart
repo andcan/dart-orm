@@ -1,4 +1,4 @@
-import 'coin.e.dart';
+import 'coin.dart';
 import 'package:orm/orm.dart';
 
 class Order extends Entity {
@@ -24,10 +24,10 @@ class Order extends Entity {
 
   Order.fromMapSym (Map<Symbol, dynamic> values)
   : this._id = values[OrderMeta.SYMBOL_ID],
-    this._first = values[OrderMeta.SYMBOL_FIRST],
-    this._price = values[OrderMeta.SYMBOL_PRICE],
-    this._second = values[OrderMeta.SYMBOL_SECOND],
-    this._total = values[OrderMeta.SYMBOL_TOTAL];
+  this._first = values[OrderMeta.SYMBOL_FIRST],
+  this._price = values[OrderMeta.SYMBOL_PRICE],
+  this._second = values[OrderMeta.SYMBOL_SECOND],
+  this._total = values[OrderMeta.SYMBOL_TOTAL];
   
   int get id => _id;
   Coin get first => _first;
@@ -96,6 +96,14 @@ class Order extends Entity {
       throw new ArgumentError ('total is not valid');
     }
   }
+  
+  String toString () => '''{
+    id: $id,
+    first: $first,
+    price: $price,
+    second: $second,
+    total: $total
+  }''';
   
   static final OrderMeta _meta = new OrderMeta();
 }

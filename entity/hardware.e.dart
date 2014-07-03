@@ -17,8 +17,8 @@ class Hardware extends Entity {
 
   Hardware.fromMapSym (Map<Symbol, dynamic> values)
   : this._id = values[HardwareMeta.SYMBOL_ID],
-    this._name = values[HardwareMeta.SYMBOL_NAME],
-    this._productor = values[HardwareMeta.SYMBOL_PRODUCTOR];
+  this._name = values[HardwareMeta.SYMBOL_NAME],
+  this._productor = values[HardwareMeta.SYMBOL_PRODUCTOR];
   
   int get id => _id;
   String get name => _name;
@@ -63,6 +63,12 @@ class Hardware extends Entity {
       throw new ArgumentError ('productor is not valid');
     }
   }
+  
+  String toString () => '''{
+    id: $id,
+    name: $name,
+    productor: $productor
+  }''';
   
   static final HardwareMeta _meta = new HardwareMeta();
 }

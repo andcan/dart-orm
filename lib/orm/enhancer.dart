@@ -29,19 +29,6 @@ class EnhancerEntity {
   Member get identifier => null == id ? 
       (hasParent ? superclass.identifier : null) : id;
   
-  List<Member> _allMembs;
-  
-  List<Member> _allMembers () {
-    if (null == _allMembs) {
-      _allMembs = <Member>[];
-      if (hasParent) {
-        _allMembs.addAll(superclass.members);
-      }
-      _allMembs.addAll(members);
-    }
-    return _allMembs;
-  }
-  
   Map<String, String> _annotationArguments (Annotation a) {
     Map<String, String> args = <String, String> {};
     a.arguments.arguments.forEach((arg) {
@@ -56,7 +43,9 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('List asList ($entityName $entityNamelc) => [');
-    _allMembers().forEach((member) => _buffer.write('\n    $entityNamelc.${member.vdname},'));
+    _inheritanceChain().forEach((entity) =>
+      entity.members.forEach((member) =>
+          _buffer.write('\n    $entityNamelc.${member.vdname},')));
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
   }
   
@@ -64,10 +53,10 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('Map<String, dynamic> asMap ($entityName $entityNamelc) => <String, dynamic> {');
-    _allMembers().forEach((member) {
+    _inheritanceChain().forEach((entity) => entity.members.forEach((member) {
       String vdname = member.vdname;
       _buffer.write("\n    '${member.vdname}': $entityNamelc.${member.vdname},");
-    });
+    }));
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  };';
   }
   
@@ -75,13 +64,16 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('Map<Symbol, dynamic> asMapSym ($entityName $entityNamelc) => <Symbol, dynamic> {');
-    if (hasParent) {
-      superclass.members.forEach((member) => 
-          _buffer.write('\n    ${superclass.entityMetaName}.SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},'));
-    }
-    members.forEach((member) =>
-      _buffer.write("\n    SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},")
-    );
+    _inheritanceChain().forEach((entity) {
+      if (this == entity) {
+        entity.members.forEach((member) =>
+          _buffer.write("\n    SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},")
+        );
+      } else {
+        entity.members.forEach((member) => 
+            _buffer.write('\n    ${entity.entityMetaName}.SYMBOL_${member.vdnameuc}: $entityNamelc.${member.vdname},'));
+      }
+    });
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  };';
   }
   
@@ -89,56 +81,75 @@ class EnhancerEntity {
     //Standard constructor
     _buffer..clear()
       ..write('$entityName ({');
-    if (hasParent) {
-      superclass.members.forEach((member) => 
-                _buffer.write('${member.typeName} ${member.vdname}, '));
-    }
-    members.forEach((member) =>
-        _buffer.write('${member.typeName} ${member.vdname}, '));
+    _inheritanceChain().forEach((entity) {
+      entity.members.forEach((member) => 
+          _buffer.write('${member.typeName} ${member.vdname}, '));
+    });
     String tmp = _buffer.toString().substring(0, _buffer.length - 2);
-    _buffer..clear()
-      ..write('$tmp})\n  : ');
-    if (hasParent) {
-      _buffer.write('super(');
-      superclass.members.forEach((member) => 
-                _buffer.write('${member.vdname}: ${member.vdname},\n    '));
-      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
-      _buffer..clear()
-        ..write(tmp);
-    }
-    members.forEach((member) =>
-            _buffer.write('this._${member.vdname} = ${member.vdname},\n    '));
-    tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
-    _buffer..clear()
-      ..write('$tmp\n\n  ');
+    _buffer..clear()..write('$tmp})\n  : ');
+    _inheritanceChain().forEach((entity) {
+      if (this == entity) {
+        if (1 !=_inheritanceChain().length) {
+          tmp = '${_buffer.toString().substring(0, _buffer.length - 2)}),\n  ';
+          _buffer..clear()..write(tmp);
+        }
+        members.forEach((member) 
+            => _buffer.write('this._${member.vdname} = ${member.vdname},\n    '));
+        tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
+        _buffer..clear()..write('$tmp\n\n  ');
+      } else {
+        if (_inheritanceChain().first == entity) {
+          _buffer.write('super(');
+        }
+        entity.members.forEach((member) => 
+            _buffer.write('${member.vdname}: ${member.vdname},\n    '));
+        tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}, ';
+        _buffer..clear()..write(tmp);
+      }
+    });
     //String map constructor
     _buffer.write('$entityName.fromMap (Map<String, dynamic> values)\n  : ');
-    if (hasParent) {
-      _buffer.write('super(');
-      superclass.members.forEach((member) => 
-          _buffer.write("${member.vdname}: values['${member.vdname}'],\n    "));
-      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
-      _buffer..clear()
-        ..write(tmp);
-    }
-    members.forEach((member) =>
-        _buffer.write("this._${member.vdname} = values['${member.vdname}'],\n    "));
-    tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
-    _buffer..clear()
-      ..write('$tmp\n\n  ');
+    _inheritanceChain().forEach((entity) {
+      if (this == entity) {
+        if (1 !=_inheritanceChain().length) {
+          tmp = '${_buffer.toString().substring(0, _buffer.length - 2)}),\n  ';
+          _buffer..clear()..write(tmp);
+        }
+        members.forEach((member) 
+            => _buffer.write("this._${member.vdname} = values['${member.vdname}'],\n    "));
+        tmp = '${_buffer.toString().substring(0, _buffer.length - 6)};';
+        _buffer..clear()..write('$tmp\n\n  ');
+      } else {
+        if (_inheritanceChain().first == entity) {
+          _buffer.write('super(');
+        }
+        entity.members.forEach((member) 
+            => _buffer.write("${member.vdname}: values['${member.vdname}'],\n    "));
+        tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}, ';
+        _buffer..clear()..write(tmp);
+      }
+    });
     //Symbol map constructor
     _buffer.write('$entityName.fromMapSym (Map<Symbol, dynamic> values)\n  : ');
-    if (hasParent) {
-      _buffer.write('super(');
-      superclass.members.forEach((member) => 
-          _buffer.write('${member.vdname}: values[${superclass.entityMetaName}.SYMBOL_${member.vdnameuc}],\n    '));
-      tmp = '${_buffer.toString().substring(0, _buffer.length - 6)}), ';
-      _buffer..clear()
-        ..write(tmp);
-    }
-    members.forEach((member) =>
-        _buffer.write("this._${member.vdname} = values[$entityMetaName.SYMBOL_${member.vdnameuc}],\n    "));
-    return '${_buffer.toString().substring(0, _buffer.length - 6)};';
+    _inheritanceChain().forEach((entity) {
+      if (this == entity) {
+        if (1 !=_inheritanceChain().length) {
+          tmp = '${_buffer.toString().substring(0, _buffer.length - 4)}),\n  ';
+          _buffer..clear()..write(tmp);
+        }
+        members.forEach((member) 
+            => _buffer.write("this._${member.vdname} = values[$entityMetaName.SYMBOL_${member.vdnameuc}],\n  "));
+      } else {
+        if (_inheritanceChain().first == entity) {
+          _buffer.write('super(');
+        }
+        entity.members.forEach((member) 
+            => _buffer.write('${member.vdname}: values[${entity.entityMetaName}.SYMBOL_${member.vdnameuc}],\n    '));
+        tmp = '${_buffer.toString().substring(0, _buffer.length - 6)},\n  ';
+        _buffer..clear()..write(tmp);
+      }
+    });
+    return '${_buffer.toString().substring(0, _buffer.length - 4)};';
   }
   
   String _delete () => 'String delete ($entityName $entityNamelc) => "DELETE FROM $entityName WHERE $entityName.\$idName = \'\${get($entityNamelc, idName)}\';";';
@@ -212,21 +223,50 @@ class EnhancerEntity {
   
   String _imports () {
     _buffer.clear();
+    List<String> parents = <String>[];
+    _inheritanceChain().forEach((entity) {
+      if (this != entity) {
+        files.forEach((file) {
+          if (file.contains(entity.entityNamelc)) {
+            parents.add(file);
+          }
+        });
+      }
+    });
     imports.forEach((i) {
       String imp = i.toString();
-      if (null != superclass) {
-        String target = '${superclass.entityNamelc}.dart';
-        _buffer.write('${imp.contains(target) 
-          ? imp.replaceFirst(target, '${superclass.entityNamelc}.e.dart') 
-              : imp}\n');
+      bool required = false;
+      for (int i = 0; i < parents.length; ++i) {
+        if (imp.contains(parents[i])) {
+          required = true;
+          _buffer.write('${imp.replaceAll(new RegExp(".dart'"), ".e.dart'")}\n');
+          parents.removeAt(i);
+          i--;
+        }
       }
-      if (files.contains(p.basename(i.uri.toString().replaceAll("'", '')))) {
-        _buffer.write('${imp.replaceAll('.dart', '.e.dart')}\n');
-      } else {
+      if (!required) {
+        required = false;
         _buffer.write('$imp\n');
       }
     });
+    parents.forEach((p) 
+        => _buffer.write("import '${p.replaceAll(new RegExp(".dart"), ".e.dart")}';\n"));
     return _buffer.toString();
+  }
+  
+  Iterable<EnhancerEntity> _ic;
+    
+  Iterable<EnhancerEntity> _inheritanceChain () {
+    if (null == _ic) {
+      EnhancerEntity e = this;
+      List<EnhancerEntity> es = <EnhancerEntity>[this];
+      while (e.hasParent) {
+        e = e.superclass;
+        es.add(e);
+      }
+      _ic = es.reversed;
+    }
+    return _ic;
   }
   
   String _insert () {
@@ -359,10 +399,12 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write("static const String SQL_CREATE = 'CREATE TABLE $entityName (");
-    _allMembers().forEach((member) {
-      Map<String, String> args = _annotationArguments(member.annotation);
-      String sqlType = _sqlTypeForMember(member);
-      _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
+    _inheritanceChain().forEach((entity) {
+      entity.members.forEach((member) {
+        Map<String, String> args = _annotationArguments(member.annotation);
+        String sqlType = _sqlTypeForMember(member);
+        _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
+      });
     });
     return "${_buffer.toString().substring(0, _buffer.length - 2)}, PRIMARY KEY(${identifier.vdname}));';";
   }
@@ -396,6 +438,17 @@ class EnhancerEntity {
     return null;
   }
   
+  String _toString () {
+   _buffer..clear()..write('String toString () => \'\'\'{\n');
+   _inheritanceChain().forEach((entity) {
+    entity.members.forEach((member) {
+      _buffer.write('    ${member.vdname}: \$${member.vdname},\n');
+    });
+   });
+   String str = _buffer.toString();
+   return '${str.toString().substring(0, str.length - 2)}\n  }\'\'\';';
+  }
+  
   String _update () => '''String update ($entityName $entityNamelc, List values, [List<String> fields]) {
     if (null == fields) {
       fields = ${entityName}Meta.FIELDS;
@@ -427,6 +480,8 @@ ${isAbstract ? 'abstract ' : ''}class $entityName extends ${hasParent ? extendsC
   ${_hashCode()}
   
   ${_setters()}
+  
+  ${_toString()}
   
   static final $entityMetaName _meta = new $entityMetaName();
 }

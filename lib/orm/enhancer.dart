@@ -403,7 +403,8 @@ class EnhancerEntity {
       entity.members.forEach((member) {
         Map<String, String> args = _annotationArguments(member.annotation);
         String sqlType = _sqlTypeForMember(member);
-        _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') && args['nullable'] ? '': 'NOT'} NULL, ');
+        _buffer.write('${member.vdname} $sqlType ${args.containsKey('nullable') 
+          && 'true' == args['nullable'] ? '': 'NOT'} NULL, ');
       });
     });
     return "${_buffer.toString().substring(0, _buffer.length - 2)}, PRIMARY KEY(${identifier.vdname}));';";

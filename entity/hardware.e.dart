@@ -33,6 +33,10 @@ class Hardware extends Entity {
     return hash;
   }
   
+  bool operator == (Hardware hardware) => id == hardware.id &&
+    name == hardware.name &&
+    productor == hardware.productor;
+  
   set id (int id) {
     if (HardwareMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
@@ -117,7 +121,6 @@ class HardwareMeta extends EntityMeta<Hardware> {
         return hardware.productor;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   
@@ -176,7 +179,6 @@ class HardwareMeta extends EntityMeta<Hardware> {
         break;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   

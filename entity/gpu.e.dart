@@ -26,10 +26,15 @@ class Gpu extends Hardware {
   GpuMeta get entityMetadata => _meta;
 
   int get hashCode {
-    int hash = 1;
+    int hash = super.hashCode;
     hash = 31 * hash + memorySize.hashCode;
     return hash;
   }
+  
+  bool operator == (Gpu gpu) => id == gpu.id &&
+    name == gpu.name &&
+    productor == gpu.productor &&
+    memorySize == gpu.memorySize;
   
   set memorySize (int memorySize) {
     if (GpuMeta.PERSISTABLE_MEMORYSIZE.validate(memorySize)) {
@@ -88,17 +93,10 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
   
   dynamic get (Gpu gpu, String field) {
     switch (field) {
-      case 'id':
-        return gpu.id;
-      case 'name':
-        return gpu.name;
-      case 'productor':
-        return gpu.productor;
       case 'memorySize':
         return gpu.memorySize;
       default:
-        throw new ArgumentError('Invalid field $field');
-        break;
+        return super.get(gpu, field);
     }
   }
   
@@ -138,20 +136,11 @@ class GpuMeta extends HardwareMeta implements EntityMeta<Gpu> {
   
   void set (Gpu gpu, String field, value) {
     switch (field) {
-      case 'id':
-        gpu.id = value;
-        break;
-      case 'name':
-        gpu.name = value;
-        break;
-      case 'productor':
-        gpu.productor = value;
-        break;
       case 'memorySize':
         gpu.memorySize = value;
         break;
       default:
-        throw new ArgumentError('Invalid field $field');
+        super.set(gpu, field, value);
         break;
     }
   }

@@ -154,6 +154,14 @@ class EnhancerEntity {
   
   String _delete () => 'String delete ($entityName $entityNamelc) => "DELETE FROM $entityName WHERE $entityName.\$idName = \'\${get($entityNamelc, idName)}\';";';
   
+  String _equals () {
+    _buffer..clear()..write('bool operator == ($entityName $entityNamelc) => ');
+    _inheritanceChain().forEach((entity) =>
+        entity.members.forEach((member) =>
+            _buffer.write('${member.vdname} == $entityNamelc.${member.vdname} &&\n    ')));
+    return '${_buffer.toString().substring(0, _buffer.length - 8)};';
+  }
+  
   String _fields () {
     _buffer
         ..clear()
@@ -167,12 +175,15 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('static const List<String> FIELDS = const <String>[');
-    if (hasParent) {
-      superclass.members.forEach((member) =>
-          _buffer.write("\n    ${superclass.entityMetaName}.FIELD_${member.vdnameuc},"));
-    }
-    members.forEach((member) =>
-        _buffer.write("\n    FIELD_${member.vdnameuc},"));
+    _inheritanceChain().forEach((entity) {
+      if (this == entity) {
+        members.forEach((member) =>
+            _buffer.write("\n    FIELD_${member.vdnameuc},"));
+      } else {
+        entity.members.forEach((member) => 
+            _buffer.write("\n    ${entity.entityMetaName}.FIELD_${member.vdnameuc},"));
+      }
+    });
     return '${_buffer.toString().substring(0, _buffer.length - 1)}\n  ];';
   }
   
@@ -194,14 +205,9 @@ class EnhancerEntity {
         ..clear()
         ..write('dynamic get ($entityName $entityNamelc, String field) {\n    switch (field) {\n');
     List<Member> ms = <Member>[];
-    if (hasParent) {
-      ms.addAll(superclass.members);
-    }
-    ms.addAll(members);
-    ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        return $entityNamelc.${member.vdname};\n"));
+    members.forEach((member) => _buffer.write("      case '${member.vdname}':\n        return $entityNamelc.${member.vdname};\n"));
     return '''$_buffer      default:
-        throw new ArgumentError('Invalid field \$field');
-        break;
+        ${hasParent ? 'return super.get($entityNamelc, field);' : "throw new ArgumentError('Invalid field \$field');"}
     }
   }''';
   }
@@ -216,7 +222,7 @@ class EnhancerEntity {
     _buffer
         ..clear()
         ..write('''int get hashCode {
-    int hash = 1;''');
+    int hash = ${hasParent ? 'super.hashCode' : '1'};''');
     members.forEach((member) => _buffer.write('\n    hash = 31 * hash + ${member.vdname}.hashCode;'));
     return '${_buffer.toString()}\n    return hash;\n  }';
   }
@@ -350,15 +356,10 @@ class EnhancerEntity {
       _buffer
           ..clear()
           ..write('void set ($entityName $entityNamelc, String field, value) {\n    switch (field) {\n');
-      List<Member> ms = <Member>[];
-      if (hasParent) {
-        ms.addAll(superclass.members);
-      }
-      ms.addAll(members);
-      ms.forEach((member) => _buffer.write("      case '${member.vdname}':\n        $entityNamelc.${member.vdname} = value;\n        break;\n"));
+      members.forEach((member) => _buffer.write("      case '${member.vdname}':\n        $entityNamelc.${member.vdname} = value;\n        break;\n"));
       return '''$_buffer      default:
-        throw new ArgumentError('Invalid field \$field');
-        break;
+        ${hasParent ? 'super.set($entityNamelc, field, value);\n        break;' 
+            : "throw new ArgumentError('Invalid field \$field');"}
     }
   }''';
     }
@@ -479,6 +480,8 @@ ${isAbstract ? 'abstract ' : ''}class $entityName extends ${hasParent ? extendsC
   $entityMetaName get entityMetadata => _meta;
 
   ${_hashCode()}
+  
+  ${_equals()}
   
   ${_setters()}
   

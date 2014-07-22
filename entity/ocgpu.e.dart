@@ -29,10 +29,16 @@ class OcGpu extends Gpu {
   OcGpuMeta get entityMetadata => _meta;
 
   int get hashCode {
-    int hash = 1;
+    int hash = super.hashCode;
     hash = 31 * hash + offset.hashCode;
     return hash;
   }
+  
+  bool operator == (OcGpu ocgpu) => id == ocgpu.id &&
+    name == ocgpu.name &&
+    productor == ocgpu.productor &&
+    memorySize == ocgpu.memorySize &&
+    offset == ocgpu.offset;
   
   set offset (int offset) {
     if (OcGpuMeta.PERSISTABLE_OFFSET.validate(offset)) {
@@ -95,13 +101,10 @@ class OcGpuMeta extends GpuMeta implements EntityMeta<OcGpu> {
   
   dynamic get (OcGpu ocgpu, String field) {
     switch (field) {
-      case 'memorySize':
-        return ocgpu.memorySize;
       case 'offset':
         return ocgpu.offset;
       default:
-        throw new ArgumentError('Invalid field $field');
-        break;
+        return super.get(ocgpu, field);
     }
   }
   
@@ -141,14 +144,11 @@ class OcGpuMeta extends GpuMeta implements EntityMeta<OcGpu> {
   
   void set (OcGpu ocgpu, String field, value) {
     switch (field) {
-      case 'memorySize':
-        ocgpu.memorySize = value;
-        break;
       case 'offset':
         ocgpu.offset = value;
         break;
       default:
-        throw new ArgumentError('Invalid field $field');
+        super.set(ocgpu, field, value);
         break;
     }
   }
@@ -176,6 +176,9 @@ class OcGpuMeta extends GpuMeta implements EntityMeta<OcGpu> {
   static const Symbol ENTITY_NAME_SYM = const Symbol ('OcGpu');
   static const String FIELD_OFFSET = 'offset';
   static const List<String> FIELDS = const <String>[
+    HardwareMeta.FIELD_ID,
+    HardwareMeta.FIELD_NAME,
+    HardwareMeta.FIELD_PRODUCTOR,
     GpuMeta.FIELD_MEMORYSIZE,
     FIELD_OFFSET
   ];

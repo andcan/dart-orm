@@ -27,6 +27,9 @@ class Coin extends Entity {
     return hash;
   }
   
+  bool operator == (Coin coin) => marketId == coin.marketId &&
+    name == coin.name;
+  
   set marketId (int marketId) {
     if (CoinMeta.PERSISTABLE_MARKETID.validate(marketId)) {
       _marketId = marketId;
@@ -95,7 +98,6 @@ class CoinMeta extends EntityMeta<Coin> {
         return coin.name;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   
@@ -147,7 +149,6 @@ class CoinMeta extends EntityMeta<Coin> {
         break;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   

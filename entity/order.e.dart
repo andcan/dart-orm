@@ -46,6 +46,12 @@ class Order extends Entity {
     return hash;
   }
   
+  bool operator == (Order order) => id == order.id &&
+    first == order.first &&
+    price == order.price &&
+    second == order.second &&
+    total == order.total;
+  
   set id (int id) {
     if (OrderMeta.PERSISTABLE_ID.validate(id)) {
       _id = id;
@@ -162,7 +168,6 @@ class OrderMeta extends EntityMeta<Order> {
         return order.total;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   
@@ -235,7 +240,6 @@ class OrderMeta extends EntityMeta<Order> {
         break;
       default:
         throw new ArgumentError('Invalid field $field');
-        break;
     }
   }
   
